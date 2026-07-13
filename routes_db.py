@@ -191,6 +191,21 @@ def get_sublotes_for_lote(conn: sqlite3.Connection, lote_id: int) -> list[sqlite
     ).fetchall()
 
 
+def get_recent_origenes(conn: sqlite3.Connection, limit: int = 10) -> list[sqlite3.Row]:
+    """Distinct origins used in past lotes, most recently used first — already
+    geocoded, so picking one skips geocoding entirely (zero risk of failure)."""
+    return conn.execute(
+        """
+        SELECT origen_texto, origen_lat, origen_lng, MAX(fecha_generado) AS ultima_fecha
+        FROM lotes
+        GROUP BY origen_texto, origen_lat, origen_lng
+        ORDER BY ultima_fecha DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+
+
 def get_all_geocoded_leads(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     """All leads with usable coordinates, regardless of sharing status — used for
     the "every lead" base layer of the map view."""

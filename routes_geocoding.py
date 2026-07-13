@@ -161,5 +161,8 @@ def geocode_lead(
 
 
 def geocode_free_text(query: str) -> tuple[float, float] | None:
-    """Geocodes an arbitrary manually-typed query (e.g. a route origin address)."""
-    return nominatim_geocode(_with_city_suffix(query))
+    """Geocodes an arbitrary manually-typed query (e.g. a route origin address).
+    Applies the same normalization as geocode_lead's direccion branch (abbreviation
+    expansion, postal code comma) so a typed origin isn't more fragile than a lead."""
+    normalizado = _insert_postal_code_comma(_expand_abbreviations(query))
+    return nominatim_geocode(_with_city_suffix(normalizado))

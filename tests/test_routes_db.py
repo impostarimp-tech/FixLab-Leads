@@ -164,3 +164,34 @@ def test_get_lote_route_points_returns_origin_then_chained_leads_in_order(conn):
 
 def test_get_lote_route_points_returns_empty_for_unknown_lote(conn):
     assert db.get_lote_route_points(conn, 999) == []
+
+
+def test_get_recent_origenes_orders_by_most_recent_first(conn):
+    older_id = db.create_lote(conn, -34.60, -58.40, "Origen Viejo", 1, 1)
+    newer_id = db.create_lote(conn, -34.61, -58.41, "Origen Nuevo", 1, 1)
+    conn.execute("UPDATE lotes SET fecha_generado = ? WHERE id = ?", ("2026-01-01T00:00:00", older_id))
+    conn.execute("UPDATE lotes SET fecha_generado = ? WHERE id = ?", ("2026-06-01T00:00:00", newer_id))
+    conn.commit()
+
+    origenes = db.get_recent_origenes(conn)
+
+    assert [o["origen_texto"] for o in origenes] == ["Origen Nuevo", "Origen Viejo"]
+
+
+def test_get_recent_origenes_deduplicates_identical_origins(conn):
+    db.create_lote(conn, -34.60, -58.40, "Local FixLab", 1, 1)
+    db.create_lote(conn, -34.60, -58.40, "Local FixLab", 1, 1)
+
+    origenes = db.get_recent_origenes(conn)
+
+    assert len(origenes) == 1
+    assert origenes[0]["origen_texto"] == "Local FixLab"
+
+
+def test_get_recent_origenes_respects_limit(conn):
+    for i in range(5):
+        db.create_lote(conn, -34.60, -58.40, f"Origen {i}", 1, 1)
+
+    origenes = db.get_recent_origenes(conn, limit=2)
+
+    assert len(origenes) == 2

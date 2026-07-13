@@ -58,6 +58,24 @@ def test_generate_lote_raises_for_non_positive_n(tmp_path):
                 pass
 
 
+def test_generate_lote_skips_geocoding_when_origen_coords_given(tmp_path):
+    db_path = str(tmp_path / "test.db")
+    db.init_db(db_path)
+    conn = db.get_connection(db_path)
+    lead_id = db.upsert_lead(conn, "P1", "Repuestos", "Unico", "Dir", "")
+    db.set_geocode_result(conn, lead_id, -34.60, -58.40, "direccion")
+
+    with patch("routes_batch.geocoding.geocode_free_text") as mock_geocode:
+        result = batch.generate_lote(
+            conn, origen_texto="Local FixLab (guardado)", n=1, origen_coords=(-34.60, -58.401)
+        )
+
+    mock_geocode.assert_not_called()
+    assert result["tamano_real"] == 1
+    lote = conn.execute("SELECT * FROM lotes WHERE id = ?", (result["lote_id"],)).fetchone()
+    assert (lote["origen_lat"], lote["origen_lng"]) == (-34.60, -58.401)
+
+
 def test_generate_lote_uses_fewer_than_n_when_pool_is_smaller(tmp_path):
     db_path = str(tmp_path / "test.db")
     db.init_db(db_path)

@@ -11,6 +11,79 @@ import routes_sheet_sync as sheet_sync
 
 rutas_bp = Blueprint("rutas", __name__, url_prefix="/rutas")
 
+# CABA barrios + GBA partidos usable as a route origin (subset of app.py's
+# ZONAS_PREDEFINIDAS, dropping comuna-level groupings and far-away interior
+# cities that don't make sense as a starting point for a local route).
+ZONAS_ORIGEN = [
+    ("Retiro", "Retiro, Buenos Aires, Argentina"),
+    ("San Nicolas", "San Nicolas, Buenos Aires, Argentina"),
+    ("Puerto Madero", "Puerto Madero, Buenos Aires, Argentina"),
+    ("San Telmo", "San Telmo, Buenos Aires, Argentina"),
+    ("Monserrat", "Monserrat, Buenos Aires, Argentina"),
+    ("Constitucion", "Constitucion, Buenos Aires, Argentina"),
+    ("Recoleta", "Recoleta, Buenos Aires, Argentina"),
+    ("Balvanera", "Balvanera, Buenos Aires, Argentina"),
+    ("San Cristobal", "San Cristobal, Buenos Aires, Argentina"),
+    ("La Boca", "La Boca, Buenos Aires, Argentina"),
+    ("Barracas", "Barracas, Buenos Aires, Argentina"),
+    ("Parque Patricios", "Parque Patricios, Buenos Aires, Argentina"),
+    ("Nueva Pompeya", "Nueva Pompeya, Buenos Aires, Argentina"),
+    ("Almagro", "Almagro, Buenos Aires, Argentina"),
+    ("Boedo", "Boedo, Buenos Aires, Argentina"),
+    ("Caballito", "Caballito, Buenos Aires, Argentina"),
+    ("Flores", "Flores, Buenos Aires, Argentina"),
+    ("Parque Chacabuco", "Parque Chacabuco, Buenos Aires, Argentina"),
+    ("Villa Soldati", "Villa Soldati, Buenos Aires, Argentina"),
+    ("Villa Riachuelo", "Villa Riachuelo, Buenos Aires, Argentina"),
+    ("Villa Lugano", "Villa Lugano, Buenos Aires, Argentina"),
+    ("Liniers", "Liniers, Buenos Aires, Argentina"),
+    ("Mataderos", "Mataderos, Buenos Aires, Argentina"),
+    ("Parque Avellaneda", "Parque Avellaneda, Buenos Aires, Argentina"),
+    ("Villa Real", "Villa Real, Buenos Aires, Argentina"),
+    ("Monte Castro", "Monte Castro, Buenos Aires, Argentina"),
+    ("Versalles", "Versalles, Buenos Aires, Argentina"),
+    ("Floresta", "Floresta, Buenos Aires, Argentina"),
+    ("Velez Sarsfield", "Velez Sarsfield, Buenos Aires, Argentina"),
+    ("Villa Luro", "Villa Luro, Buenos Aires, Argentina"),
+    ("Villa General Mitre", "Villa General Mitre, Buenos Aires, Argentina"),
+    ("Villa Devoto", "Villa Devoto, Buenos Aires, Argentina"),
+    ("Villa del Parque", "Villa del Parque, Buenos Aires, Argentina"),
+    ("Villa Santa Rita", "Villa Santa Rita, Buenos Aires, Argentina"),
+    ("Coghlan", "Coghlan, Buenos Aires, Argentina"),
+    ("Saavedra", "Saavedra, Buenos Aires, Argentina"),
+    ("Villa Urquiza", "Villa Urquiza, Buenos Aires, Argentina"),
+    ("Villa Pueyrredon", "Villa Pueyrredon, Buenos Aires, Argentina"),
+    ("Belgrano", "Belgrano, Buenos Aires, Argentina"),
+    ("Nunez", "Nunez, Buenos Aires, Argentina"),
+    ("Colegiales", "Colegiales, Buenos Aires, Argentina"),
+    ("Palermo", "Palermo, Buenos Aires, Argentina"),
+    ("Chacarita", "Chacarita, Buenos Aires, Argentina"),
+    ("Villa Crespo", "Villa Crespo, Buenos Aires, Argentina"),
+    ("La Paternal", "La Paternal, Buenos Aires, Argentina"),
+    ("Villa Ortuzar", "Villa Ortuzar, Buenos Aires, Argentina"),
+    ("Agronomia", "Agronomia, Buenos Aires, Argentina"),
+    ("Parque Chas", "Parque Chas, Buenos Aires, Argentina"),
+    ("San Isidro (GBA Norte)", "San Isidro, Buenos Aires, Argentina"),
+    ("Vicente Lopez (GBA Norte)", "Vicente Lopez, Buenos Aires, Argentina"),
+    ("Tigre (GBA Norte)", "Tigre, Buenos Aires, Argentina"),
+    ("San Martin (GBA Norte)", "San Martin, Buenos Aires, Argentina"),
+    ("Tres de Febrero (GBA Norte)", "Tres de Febrero, Buenos Aires, Argentina"),
+    ("Hurlingham (GBA Norte)", "Hurlingham, Buenos Aires, Argentina"),
+    ("Quilmes (GBA Sur)", "Quilmes, Buenos Aires, Argentina"),
+    ("Avellaneda (GBA Sur)", "Avellaneda, Buenos Aires, Argentina"),
+    ("Lomas de Zamora (GBA Sur)", "Lomas de Zamora, Buenos Aires, Argentina"),
+    ("Lanus (GBA Sur)", "Lanus, Buenos Aires, Argentina"),
+    ("Berazategui (GBA Sur)", "Berazategui, Buenos Aires, Argentina"),
+    ("Florencio Varela (GBA Sur)", "Florencio Varela, Buenos Aires, Argentina"),
+    ("Almirante Brown (GBA Sur)", "Almirante Brown, Buenos Aires, Argentina"),
+    ("Esteban Echeverria (GBA Sur)", "Esteban Echeverria, Buenos Aires, Argentina"),
+    ("Moron (GBA Oeste)", "Moron, Buenos Aires, Argentina"),
+    ("La Matanza (GBA Oeste)", "La Matanza, Buenos Aires, Argentina"),
+    ("Merlo (GBA Oeste)", "Merlo, Buenos Aires, Argentina"),
+    ("Moreno (GBA Oeste)", "Moreno, Buenos Aires, Argentina"),
+    ("Ituzaingo (GBA Oeste)", "Ituzaingo, Buenos Aires, Argentina"),
+]
+
 
 def _conn():
     return db.get_connection(db.DB_PATH)
@@ -51,12 +124,13 @@ BASE_STYLE = """
   li { padding: 6px 0; border-bottom: 1px solid var(--bg); }
   li:last-child { border-bottom: none; }
   label { display: block; margin-bottom: 10px; color: var(--text-muted); font-size: 14px; }
-  input[type="text"], input[type="number"] {
+  input[type="text"], input[type="number"], select {
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 8px 10px;
     font-size: 14px;
     margin-top: 4px;
+    font-family: inherit;
   }
   button, input[type="submit"] {
     background: var(--blue);
@@ -79,10 +153,41 @@ PAGE_HOME = """
 """ + BASE_STYLE + """
 <h1>Generador de rutas comerciales</h1>
 <form method="post" action="{{ url_for('rutas.generar') }}">
-  <label>Origen: <input type="text" name="origen" required></label><br>
+  <label>Origen:
+    <select name="origen_select" id="origenSelect" onchange="onOrigenSelectChange()" required>
+      <option value="" disabled selected>-- Elegir origen --</option>
+      {% if origenes_guardados %}
+      <optgroup label="Origenes guardados">
+        {% for o in origenes_guardados %}
+          <option value="guardado|{{ o.origen_lat }}|{{ o.origen_lng }}|{{ o.origen_texto }}">{{ o.origen_texto }}</option>
+        {% endfor %}
+      </optgroup>
+      {% endif %}
+      <optgroup label="Zona / Barrio">
+        {% for label, query in zonas %}
+          <option value="zona|{{ query }}">{{ label }}</option>
+        {% endfor %}
+      </optgroup>
+      <option value="otro">Otra direccion (escribir)...</option>
+    </select>
+  </label>
+  <div id="origenLibreWrap" style="display:none;">
+    <label>Direccion: <input type="text" id="origenLibre" name="origen_libre"></label>
+  </div>
   <label>Cantidad de direcciones: <input type="number" name="n" value="40" min="1" required></label><br>
   <button type="submit">Generar lote</button>
 </form>
+
+<script>
+function onOrigenSelectChange() {
+  var sel = document.getElementById('origenSelect');
+  var wrap = document.getElementById('origenLibreWrap');
+  var libre = document.getElementById('origenLibre');
+  var esOtro = sel.value === 'otro';
+  wrap.style.display = esOtro ? 'block' : 'none';
+  libre.required = esOtro;
+}
+</script>
 
 <button type="button" id="syncBtn" onclick="sincronizar()">Sincronizar leads desde el Sheet</button>
 <p id="syncProgress"></p>
@@ -217,9 +322,25 @@ PAGE_MAPA = """
     border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;
   }
   #filtros label { display: block; font-size: 13px; padding: 4px 0; border: none; color: var(--text); }
+  .cat-tabs { display: flex; gap: 4px; margin-bottom: 16px; background: var(--surface);
+              border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
+  .cat-tab { flex: 1; padding: 8px; border: none; border-radius: 7px; font-size: 13px; font-weight: 600;
+             cursor: pointer; background: transparent; color: var(--text-muted); }
+  .cat-tab.active { background: var(--blue); color: white; }
+  .cat-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
 </style>
 <h1>Mapa de rutas</h1>
 <p><a href="{{ url_for('rutas.home') }}">Volver</a></p>
+
+<div class="cat-tabs">
+  <button type="button" class="cat-tab active" data-cat="Todos" onclick="onCatTabClick(this)">Todos</button>
+  <button type="button" class="cat-tab" data-cat="Repuestos" onclick="onCatTabClick(this)">
+    <span class="cat-dot" style="background:#0071e3;"></span>Repuestos</button>
+  <button type="button" class="cat-tab" data-cat="Fundas" onclick="onCatTabClick(this)">
+    <span class="cat-dot" style="background:#f58231;"></span>Fundas</button>
+  <button type="button" class="cat-tab" data-cat="Telefonos" onclick="onCatTabClick(this)">
+    <span class="cat-dot" style="background:#3cb44b;"></span>Telefonos</button>
+</div>
 
 <div id="filtros">
   {% for lote in lotes %}
@@ -247,11 +368,35 @@ PAGE_MAPA = """
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
+  const categoryColors = {"Repuestos": "#0071e3", "Fundas": "#f58231", "Telefonos": "#3cb44b"};
+  const categoryLayers = {};
+  Object.keys(categoryColors).forEach(function(cat) { categoryLayers[cat] = L.layerGroup(); });
+
   allLeads.forEach(function(lead) {
+    const layer = categoryLayers[lead.categoria];
+    if (!layer) return;
+    const color = categoryColors[lead.categoria];
     L.circleMarker([lead.lat, lead.lng], {
-      radius: 4, color: "#999", fillColor: "#999", fillOpacity: 0.6, weight: 1
-    }).bindPopup(lead.negocio).addTo(map);
+      radius: 4, color: color, fillColor: color, fillOpacity: 0.6, weight: 1
+    }).bindPopup(lead.negocio + " (" + lead.categoria + ")").addTo(layer);
   });
+
+  function showCategory(cat) {
+    Object.keys(categoryLayers).forEach(function(c) { map.removeLayer(categoryLayers[c]); });
+    if (cat === "Todos") {
+      Object.keys(categoryLayers).forEach(function(c) { categoryLayers[c].addTo(map); });
+    } else if (categoryLayers[cat]) {
+      categoryLayers[cat].addTo(map);
+    }
+  }
+
+  function onCatTabClick(btn) {
+    document.querySelectorAll(".cat-tab").forEach(function(b) { b.classList.remove("active"); });
+    btn.classList.add("active");
+    showCategory(btn.dataset.cat);
+  }
+
+  showCategory("Todos");
 
   if (allLeads.length > 0) {
     const bounds = L.latLngBounds(allLeads.map(function(l) { return [l.lat, l.lng]; }));
@@ -290,16 +435,33 @@ PAGE_MAPA = """
 
 @rutas_bp.route("/", methods=["GET"])
 def home():
-    return render_template_string(PAGE_HOME)
+    conn = _conn()
+    try:
+        origenes_guardados = db.get_recent_origenes(conn)
+    finally:
+        conn.close()
+    return render_template_string(PAGE_HOME, origenes_guardados=origenes_guardados, zonas=ZONAS_ORIGEN)
+
+
+def _resolve_origen(origen_select: str, origen_libre: str) -> tuple[str, tuple[float, float] | None]:
+    """Maps the origin form selection to (origen_texto, origen_coords).
+    origen_coords is None when it still needs geocoding (zona or free text)."""
+    if origen_select.startswith("guardado|"):
+        _, lat, lng, texto = origen_select.split("|", 3)
+        return texto, (float(lat), float(lng))
+    if origen_select.startswith("zona|"):
+        return origen_select.split("|", 1)[1], None
+    return origen_libre.strip(), None
 
 
 @rutas_bp.route("/generar", methods=["POST"])
 def generar():
     conn = _conn()
     try:
-        origen = request.form["origen"]
+        origen_select = request.form["origen_select"]
+        origen_texto, origen_coords = _resolve_origen(origen_select, request.form.get("origen_libre", ""))
         n = int(request.form["n"])
-        resultado = batch.generate_lote(conn, origen, n)
+        resultado = batch.generate_lote(conn, origen_texto, n, origen_coords=origen_coords)
     except (KeyError, ValueError) as exc:
         return render_template_string(PAGE_ERROR, error=str(exc)), 400
     finally:

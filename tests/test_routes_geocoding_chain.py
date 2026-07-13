@@ -86,6 +86,12 @@ def test_geocode_free_text_appends_city_and_country():
         assert result == (-34.6, -58.4)
 
 
+def test_geocode_free_text_expands_abbreviations_too():
+    with patch("routes_geocoding.nominatim_geocode", return_value=(-34.6, -58.4)) as mock_nominatim:
+        geo.geocode_free_text("Av. Cnel. Díaz 1862")
+        mock_nominatim.assert_called_once_with("Av. Coronel Díaz 1862, Buenos Aires, Argentina")
+
+
 def test_expand_abbreviations_replaces_known_abbreviations():
     direccion = "Av. Cnel. Díaz 1862, C1425 Cdad. Autónoma de Buenos Aires, Argentina"
     assert geo._expand_abbreviations(direccion) == (
