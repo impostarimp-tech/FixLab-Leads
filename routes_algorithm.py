@@ -3,6 +3,7 @@ chunking. No external services, no I/O."""
 from __future__ import annotations
 
 import math
+from urllib.parse import urlencode
 
 EARTH_RADIUS_METERS = 6371000
 MAX_STOPS_PER_SUBLOTE = 9
@@ -51,3 +52,25 @@ def chunk_into_sublotes(ordered_points: list[dict], max_size: int = MAX_STOPS_PE
     """Splits an already-ordered sequence into consecutive chunks of up to max_size,
     preserving order so each chunk continues geographically from the previous one."""
     return [ordered_points[i : i + max_size] for i in range(0, len(ordered_points), max_size)]
+
+
+def build_maps_link(origin: tuple[float, float], stops: list[dict]) -> str:
+    """Builds a Google Maps directions URL: origin -> up to 8 waypoints -> destination
+    (the last stop). `stops` must have between 1 and 9 items."""
+    if not stops:
+        raise ValueError("stops must contain at least one point")
+    if len(stops) > MAX_STOPS_PER_SUBLOTE:
+        raise ValueError(f"stops must contain at most {MAX_STOPS_PER_SUBLOTE} points")
+
+    waypoints = stops[:-1]
+    destination = stops[-1]
+
+    params = {
+        "api": "1",
+        "origin": f"{origin[0]},{origin[1]}",
+        "destination": f"{destination['lat']},{destination['lng']}",
+    }
+    if waypoints:
+        params["waypoints"] = "|".join(f"{p['lat']},{p['lng']}" for p in waypoints)
+
+    return "https://www.google.com/maps/dir/?" + urlencode(params)
