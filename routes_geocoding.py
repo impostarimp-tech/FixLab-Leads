@@ -138,6 +138,9 @@ def nominatim_geocode(query: str, max_retries: int = 2) -> tuple[float, float] |
     return None
 
 
+_PLACEHOLDER_DIRECCIONES = {"", "-"}
+
+
 def geocode_lead(
     negocio: str, direccion: str | None, maps_url: str | None
 ) -> tuple[tuple[float, float] | None, str]:
@@ -147,7 +150,8 @@ def geocode_lead(
     if coords:
         return coords, "maps_url"
 
-    if direccion:
+    direccion_valida = direccion is not None and direccion.strip() not in _PLACEHOLDER_DIRECCIONES
+    if direccion_valida:
         normalizado = _insert_postal_code_comma(_expand_abbreviations(direccion))
         coords = nominatim_geocode(_with_city_suffix(normalizado))
         if coords:

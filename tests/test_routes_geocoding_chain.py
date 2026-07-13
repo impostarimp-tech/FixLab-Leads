@@ -79,6 +79,16 @@ def test_geocode_lead_skips_direccion_when_blank():
         assert source == "negocio"
 
 
+def test_geocode_lead_skips_direccion_when_placeholder_dash():
+    """A lone '-' is how missing addresses are represented upstream — it must
+    not be sent to Nominatim as if it were real address text (it previously
+    geocoded to a bogus shared location for every lead missing an address)."""
+    with patch("routes_geocoding.nominatim_geocode", return_value=(-34.9, -58.7)) as mock_nominatim:
+        coords, source = geo.geocode_lead(negocio="Taller X", direccion="-", maps_url=None)
+        mock_nominatim.assert_called_once_with("Taller X, Buenos Aires, Argentina")
+        assert source == "negocio"
+
+
 def test_geocode_free_text_appends_city_and_country():
     with patch("routes_geocoding.nominatim_geocode", return_value=(-34.6, -58.4)) as mock_nominatim:
         result = geo.geocode_free_text("Av. Corrientes 1000")
