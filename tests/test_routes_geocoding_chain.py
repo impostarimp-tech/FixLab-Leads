@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+import requests
+
 import routes_geocoding as geo
 
 
@@ -26,7 +28,10 @@ def test_nominatim_geocode_returns_none_on_empty_results(mock_get, _mock_sleep):
 
 
 @patch("routes_geocoding.time.sleep", return_value=None)
-@patch("routes_geocoding.requests.get", side_effect=Exception("network down"))
+@patch(
+    "routes_geocoding.requests.get",
+    side_effect=requests.exceptions.ConnectionError("network down"),
+)
 def test_nominatim_geocode_returns_none_after_retries_exhausted(mock_get, _mock_sleep):
     assert geo.nominatim_geocode("cualquier direccion", max_retries=2) is None
     assert mock_get.call_count == 3  # initial attempt + 2 retries

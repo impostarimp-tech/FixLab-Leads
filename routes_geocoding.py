@@ -50,7 +50,7 @@ def nominatim_geocode(query: str, max_retries: int = 2) -> tuple[float, float] |
             if not results:
                 return None
             return float(results[0]["lat"]), float(results[0]["lon"])
-        except Exception:
+        except (requests.RequestException, ValueError, KeyError, IndexError):
             if attempt < max_retries:
                 time.sleep(2 ** attempt)
                 continue
