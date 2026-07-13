@@ -119,3 +119,48 @@ def test_mark_lote_compartido_marks_all_its_sublotes(conn):
 
     sublote = db.get_sublotes_for_lote(conn, lote_id)[0]
     assert sublote["compartido_en"] is not None
+
+
+def test_get_all_geocoded_leads_excludes_fallido_and_ungeocoded(conn):
+    ok_id = db.upsert_lead(conn, "P1", "Repuestos", "A", "Dir A", "")
+    db.set_geocode_result(conn, ok_id, -34.6, -58.4, "direccion")
+    fallido_id = db.upsert_lead(conn, "P2", "Repuestos", "B", "Dir B", "")
+    db.set_geocode_result(conn, fallido_id, None, None, "fallido")
+    db.upsert_lead(conn, "P3", "Repuestos", "C", "Dir C", "")  # still pendiente, no lat
+
+    leads = db.get_all_geocoded_leads(conn)
+    assert [lead["id"] for lead in leads] == [ok_id]
+
+
+def test_get_all_geocoded_leads_includes_recently_shared_leads(conn):
+    lead_a = db.upsert_lead(conn, "P1", "Repuestos", "A", "Dir A", "")
+    db.set_geocode_result(conn, lead_a, -34.6, -58.4, "direccion")
+    lote_id = db.create_lote(conn, -34.6, -58.4, "Origen", 1, 1)
+    sublote_id = db.create_sublote(conn, lote_id, 1, "https://maps.example", [lead_a])
+    db.mark_sublote_compartido(conn, sublote_id)
+
+    leads = db.get_all_geocoded_leads(conn)
+    assert [lead["id"] for lead in leads] == [lead_a]
+
+
+def test_get_lote_route_points_returns_origin_then_chained_leads_in_order(conn):
+    lead_a = db.upsert_lead(conn, "P1", "Repuestos", "A", "Dir A", "")
+    db.set_geocode_result(conn, lead_a, -34.61, -58.41, "direccion")
+    lead_b = db.upsert_lead(conn, "P2", "Repuestos", "B", "Dir B", "")
+    db.set_geocode_result(conn, lead_b, -34.62, -58.42, "direccion")
+
+    lote_id = db.create_lote(conn, -34.60, -58.40, "Mi Origen", 2, 2)
+    db.create_sublote(conn, lote_id, 1, "https://maps.example/1", [lead_a])
+    db.create_sublote(conn, lote_id, 2, "https://maps.example/2", [lead_b])
+
+    points = db.get_lote_route_points(conn, lote_id)
+
+    assert points == [
+        {"lat": -34.60, "lng": -58.40, "negocio": "Origen"},
+        {"lat": -34.61, "lng": -58.41, "negocio": "A"},
+        {"lat": -34.62, "lng": -58.42, "negocio": "B"},
+    ]
+
+
+def test_get_lote_route_points_returns_empty_for_unknown_lote(conn):
+    assert db.get_lote_route_points(conn, 999) == []

@@ -31,7 +31,8 @@ PAGE_HOME = """
      {{ sync_summary.fallidos }} fallidos.</p>
 {% endif %}
 <p><a href="{{ url_for('rutas.historial') }}">Ver historial de lotes</a> |
-   <a href="{{ url_for('rutas.fallidos') }}">Ver leads no geocodificables</a></p>
+   <a href="{{ url_for('rutas.fallidos') }}">Ver leads no geocodificables</a> |
+   <a href="{{ url_for('rutas.mapa') }}">Ver mapa</a></p>
 """
 
 PAGE_RESULTADO = """
@@ -93,6 +94,85 @@ PAGE_HISTORIAL = """
 {% endfor %}
 </ul>
 <p><a href="{{ url_for('rutas.home') }}">Volver</a></p>
+"""
+
+PAGE_MAPA = """
+<!doctype html>
+<title>Mapa de rutas</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  #map { height: 600px; width: 100%; }
+  #filtros { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 8px; margin-bottom: 10px; }
+  #filtros label { display: block; font-size: 13px; padding: 2px 0; }
+</style>
+<h1>Mapa de rutas</h1>
+<p><a href="{{ url_for('rutas.home') }}">Volver</a></p>
+
+<div id="filtros">
+  {% for lote in lotes %}
+    <label>
+      <input type="checkbox" class="lote-checkbox" value="{{ lote.id }}">
+      Lote #{{ lote.id }} — {{ lote.fecha_generado }} — {{ lote.origen_texto }}
+      ({{ lote.tamano_real }}/{{ lote.tamano_solicitado }})
+    </label>
+  {% else %}
+    <p>Todavia no generaste ningun lote.</p>
+  {% endfor %}
+</div>
+
+<div id="map"></div>
+
+<script>
+  const allLeads = {{ all_leads | tojson }};
+  const lotePoints = {{ lote_points | tojson }};
+  const colors = ["#e6194B", "#3cb44b", "#4363d8", "#f58231", "#911eb4",
+                  "#42d4f4", "#f032e6", "#bfef45", "#fabed4", "#469990"];
+
+  const map = L.map('map');
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  allLeads.forEach(function(lead) {
+    L.circleMarker([lead.lat, lead.lng], {
+      radius: 4, color: "#999", fillColor: "#999", fillOpacity: 0.6, weight: 1
+    }).bindPopup(lead.negocio).addTo(map);
+  });
+
+  if (allLeads.length > 0) {
+    const bounds = L.latLngBounds(allLeads.map(function(l) { return [l.lat, l.lng]; }));
+    map.fitBounds(bounds, {padding: [20, 20]});
+  } else {
+    map.setView([-34.6, -58.4], 12);
+  }
+
+  const loteLayers = {};
+
+  document.querySelectorAll('.lote-checkbox').forEach(function(checkbox, index) {
+    checkbox.addEventListener('change', function() {
+      const loteId = checkbox.value;
+      if (checkbox.checked) {
+        const points = lotePoints[loteId] || [];
+        const color = colors[index % colors.length];
+        const layerGroup = L.layerGroup().addTo(map);
+        L.polyline(points.map(function(p) { return [p.lat, p.lng]; }), {
+          color: color, weight: 3
+        }).addTo(layerGroup);
+        points.forEach(function(p, i) {
+          L.circleMarker([p.lat, p.lng], {
+            radius: 6, color: color, fillColor: color, fillOpacity: 0.9, weight: 2
+          }).bindPopup((i === 0 ? "Origen — " : (i + ". ")) + p.negocio).addTo(layerGroup);
+        });
+        loteLayers[loteId] = layerGroup;
+      } else if (loteLayers[loteId]) {
+        map.removeLayer(loteLayers[loteId]);
+        delete loteLayers[loteId];
+      }
+    });
+  });
+</script>
 """
 
 
@@ -168,3 +248,15 @@ def historial():
     finally:
         conn.close()
     return render_template_string(PAGE_HISTORIAL, lotes=lotes)
+
+
+@rutas_bp.route("/mapa", methods=["GET"])
+def mapa():
+    conn = _conn()
+    try:
+        all_leads = [dict(row) for row in db.get_all_geocoded_leads(conn)]
+        lotes = [dict(row) for row in db.get_lote_history(conn)]
+        lote_points = {lote["id"]: db.get_lote_route_points(conn, lote["id"]) for lote in lotes}
+    finally:
+        conn.close()
+    return render_template_string(PAGE_MAPA, all_leads=all_leads, lotes=lotes, lote_points=lote_points)

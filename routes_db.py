@@ -189,3 +189,35 @@ def get_sublotes_for_lote(conn: sqlite3.Connection, lote_id: int) -> list[sqlite
     return conn.execute(
         "SELECT * FROM sublotes WHERE lote_id = ? ORDER BY orden", (lote_id,)
     ).fetchall()
+
+
+def get_all_geocoded_leads(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """All leads with usable coordinates, regardless of sharing status — used for
+    the "every lead" base layer of the map view."""
+    return conn.execute(
+        "SELECT id, negocio, categoria, lat, lng FROM leads_cache"
+        " WHERE geocode_source != 'fallido' AND lat IS NOT NULL"
+    ).fetchall()
+
+
+def get_lote_route_points(conn: sqlite3.Connection, lote_id: int) -> list[dict]:
+    """Returns the full visiting order for a lote as a flat list of points:
+    the origin first, then every lead across its sub-lotes in chained order."""
+    lote = conn.execute("SELECT * FROM lotes WHERE id = ?", (lote_id,)).fetchone()
+    if lote is None:
+        return []
+
+    points = [{"lat": lote["origen_lat"], "lng": lote["origen_lng"], "negocio": "Origen"}]
+    rows = conn.execute(
+        """
+        SELECT lc.negocio, lc.lat, lc.lng
+        FROM sublote_leads sl
+        JOIN sublotes sb ON sb.id = sl.sublote_id
+        JOIN leads_cache lc ON lc.id = sl.lead_id
+        WHERE sb.lote_id = ?
+        ORDER BY sb.orden, sl.orden_en_ruta
+        """,
+        (lote_id,),
+    ).fetchall()
+    points.extend({"lat": row["lat"], "lng": row["lng"], "negocio": row["negocio"]} for row in rows)
+    return points
