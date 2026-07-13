@@ -1,0 +1,502 @@
+[
+  {
+    "fecha": "07/07/2026 01:02",
+    "zona": "Lomas de Zamora, Buenos Aires, Argentina",
+    "bruto": 29,
+    "nuevos": 0,
+    "costo_real": 0.222,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "06/07/2026 17:23",
+    "zona": "Lomas de Zamora, Buenos Aires, Argentina",
+    "bruto": 29,
+    "nuevos": 27,
+    "costo_real": 0.218,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "06/07/2026 17:12",
+    "zona": "Lanus, Buenos Aires, Argentina",
+    "bruto": 47,
+    "nuevos": 2,
+    "costo_real": 0.352,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "06/07/2026 16:43",
+    "zona": "Lanus, Buenos Aires, Argentina",
+    "bruto": 48,
+    "nuevos": 46,
+    "costo_real": 0.352,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "06/07/2026 16:09",
+    "zona": "Balvanera, Buenos Aires, Argentina",
+    "bruto": 71,
+    "nuevos": 12,
+    "costo_real": 0.484,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "06/07/2026 13:37",
+    "zona": "Recoleta, Buenos Aires, Argentina",
+    "bruto": 38,
+    "nuevos": 3,
+    "costo_real": 0.326,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "06/07/2026 13:18",
+    "zona": "Recoleta, Buenos Aires, Argentina",
+    "bruto": 0,
+    "nuevos": 0,
+    "costo_real": null,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "06/07/2026 13:17",
+    "zona": "Recoleta, Buenos Aires, Argentina",
+    "bruto": 0,
+    "nuevos": 0,
+    "costo_real": null,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "06/07/2026 13:06",
+    "zona": "Recoleta, Buenos Aires, Argentina",
+    "bruto": 36,
+    "nuevos": 17,
+    "costo_real": 0.184,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "30/06/2026 16:36",
+    "zona": "Monserrat, Buenos Aires, Argentina",
+    "bruto": 10,
+    "nuevos": 0,
+    "costo_real": 0.144,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "30/06/2026 13:25",
+    "zona": "San Telmo, Buenos Aires, Argentina",
+    "bruto": 3,
+    "nuevos": 0,
+    "costo_real": 0.026,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "30/06/2026 12:19",
+    "zona": "San Telmo, Buenos Aires, Argentina",
+    "bruto": 3,
+    "nuevos": 0,
+    "costo_real": 0.026,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "30/06/2026 12:03",
+    "zona": "San Cristobal, Buenos Aires, Argentina",
+    "bruto": 12,
+    "nuevos": 0,
+    "costo_real": 0.108,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "30/06/2026 11:40",
+    "zona": "San Nicolas, Buenos Aires, Argentina",
+    "bruto": 13,
+    "nuevos": 13,
+    "costo_real": 0.08,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "30/06/2026 11:08",
+    "zona": "Retiro, Buenos Aires, Argentina",
+    "bruto": 134,
+    "nuevos": 15,
+    "costo_real": 0.72,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "30/06/2026 10:51",
+    "zona": "Retiro, Buenos Aires, Argentina",
+    "bruto": 136,
+    "nuevos": 103,
+    "costo_real": 0.72,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "30/06/2026 10:40",
+    "zona": "Retiro, Buenos Aires, Argentina",
+    "bruto": 125,
+    "nuevos": 11,
+    "costo_real": 0.72,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "29/06/2026 13:21",
+    "zona": "San Cristobal, Buenos Aires, Argentina",
+    "bruto": 11,
+    "nuevos": 0,
+    "costo_real": 0.134,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "29/06/2026 11:50",
+    "zona": "San Cristobal, Buenos Aires, Argentina",
+    "bruto": 11,
+    "nuevos": 0,
+    "costo_real": 0.126,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "29/06/2026 11:25",
+    "zona": "San Cristobal, Buenos Aires, Argentina",
+    "bruto": 11,
+    "nuevos": 11,
+    "costo_real": 0.134,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "29/06/2026 10:55",
+    "zona": "Barracas, Buenos Aires, Argentina",
+    "bruto": 11,
+    "nuevos": 9,
+    "costo_real": 0.17,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "29/06/2026 09:38",
+    "zona": "Balvanera, Buenos Aires, Argentina",
+    "bruto": 84,
+    "nuevos": 83,
+    "costo_real": 0.72,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "26/06/2026 16:12",
+    "zona": "Boedo, Buenos Aires, Argentina",
+    "bruto": 174,
+    "nuevos": 9,
+    "costo_real": 0.72,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "26/06/2026 15:40",
+    "zona": "Avellaneda, Buenos Aires, Argentina",
+    "bruto": 32,
+    "nuevos": 0,
+    "costo_real": 0.266,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "26/06/2026 15:10",
+    "zona": "Avellaneda, Buenos Aires, Argentina",
+    "bruto": 32,
+    "nuevos": 23,
+    "costo_real": 0.266,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "26/06/2026 14:30",
+    "zona": "Florencio Varela, Buenos Aires, Argentina",
+    "bruto": 39,
+    "nuevos": 0,
+    "costo_real": 0.4,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "26/06/2026 13:24",
+    "zona": "Florencio Varela, Buenos Aires, Argentina",
+    "bruto": 40,
+    "nuevos": 40,
+    "costo_real": 0.4,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "26/06/2026 13:11",
+    "zona": "Lomas de Zamora, Buenos Aires, Argentina",
+    "bruto": 54,
+    "nuevos": 1,
+    "costo_real": 0.504,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "26/06/2026 12:54",
+    "zona": "Lomas de Zamora, Buenos Aires, Argentina",
+    "bruto": 53,
+    "nuevos": 51,
+    "costo_real": 0.498,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "26/06/2026 12:31",
+    "zona": "Belgrano, Buenos Aires, Argentina",
+    "bruto": 119,
+    "nuevos": 30,
+    "costo_real": 0.72,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "25/06/2026 19:27",
+    "zona": "Palermo, Buenos Aires, Argentina",
+    "bruto": 58,
+    "nuevos": 21,
+    "costo_real": 0.56,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "25/06/2026 16:45",
+    "zona": "Versalles, Buenos Aires, Argentina",
+    "bruto": 2,
+    "nuevos": 2,
+    "costo_real": 0.024,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "25/06/2026 16:34",
+    "zona": "Liniers, Buenos Aires, Argentina",
+    "bruto": 98,
+    "nuevos": 58,
+    "costo_real": 0.71,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "25/06/2026 16:24",
+    "zona": "Floresta, Buenos Aires, Argentina",
+    "bruto": 118,
+    "nuevos": 97,
+    "costo_real": 0.72,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "24/06/2026 16:50",
+    "zona": "Saavedra, Buenos Aires, Argentina",
+    "bruto": 0,
+    "nuevos": 0,
+    "costo_real": null,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "23/06/2026 15:46",
+    "zona": "Puerto Madero, Buenos Aires, Argentina",
+    "bruto": 1,
+    "nuevos": 1,
+    "costo_real": 0.036,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "23/06/2026 15:32",
+    "zona": "Constitucion, Buenos Aires, Argentina",
+    "bruto": 123,
+    "nuevos": 42,
+    "costo_real": 0.72,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "23/06/2026 15:28",
+    "zona": "Parque Patricios, Buenos Aires, Argentina",
+    "bruto": 114,
+    "nuevos": 21,
+    "costo_real": 0.72,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "23/06/2026 15:19",
+    "zona": "Monte Castro, Buenos Aires, Argentina",
+    "bruto": 8,
+    "nuevos": 0,
+    "costo_real": 0.114,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "23/06/2026 15:03",
+    "zona": "Monte Castro, Buenos Aires, Argentina",
+    "bruto": 8,
+    "nuevos": 7,
+    "costo_real": 0.112,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "22/06/2026 17:06",
+    "zona": "Lanus, Buenos Aires, Argentina",
+    "bruto": 85,
+    "nuevos": 2,
+    "costo_real": 0.644,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "22/06/2026 16:23",
+    "zona": "Lanus, Buenos Aires, Argentina",
+    "bruto": 102,
+    "nuevos": 93,
+    "costo_real": 0.638,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "22/06/2026 16:10",
+    "zona": "San Cristobal, Buenos Aires, Argentina",
+    "bruto": 12,
+    "nuevos": 0,
+    "costo_real": 0.112,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "22/06/2026 15:54",
+    "zona": "San Cristobal, Buenos Aires, Argentina",
+    "bruto": 12,
+    "nuevos": 12,
+    "costo_real": 0.104,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "22/06/2026 15:43",
+    "zona": "Monserrat, Buenos Aires, Argentina",
+    "bruto": 25,
+    "nuevos": 0,
+    "costo_real": 0.26,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "22/06/2026 15:21",
+    "zona": "Monserrat, Buenos Aires, Argentina",
+    "bruto": 25,
+    "nuevos": 23,
+    "costo_real": 0.254,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "22/06/2026 15:06",
+    "zona": "Balvanera, Buenos Aires, Argentina",
+    "bruto": 90,
+    "nuevos": 9,
+    "costo_real": 0.596,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "22/06/2026 12:26",
+    "zona": "Balvanera, Buenos Aires, Argentina",
+    "bruto": 87,
+    "nuevos": 58,
+    "costo_real": 0.596,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "22/06/2026 12:10",
+    "zona": "Colegiales, Buenos Aires, Argentina",
+    "bruto": 113,
+    "nuevos": 5,
+    "costo_real": 0.72,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  },
+  {
+    "fecha": "22/06/2026 12:05",
+    "zona": "Colegiales, Buenos Aires, Argentina",
+    "bruto": 128,
+    "nuevos": 58,
+    "costo_real": 0.72,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "repuestos"
+  }
+]
