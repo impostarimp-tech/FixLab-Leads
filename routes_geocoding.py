@@ -3,6 +3,7 @@ Nominatim by address, then Nominatim by business name."""
 from __future__ import annotations
 
 import re
+import threading
 import time
 
 import requests
@@ -25,14 +26,16 @@ NOMINATIM_USER_AGENT = "fixlab-leads-routes/1.0 (uso interno)"
 MIN_SECONDS_BETWEEN_REQUESTS = 1.0
 
 _last_request_time: float = 0.0
+_rate_limit_lock = threading.Lock()
 
 
 def _respect_rate_limit() -> None:
     global _last_request_time
-    elapsed = time.monotonic() - _last_request_time
-    if elapsed < MIN_SECONDS_BETWEEN_REQUESTS:
-        time.sleep(MIN_SECONDS_BETWEEN_REQUESTS - elapsed)
-    _last_request_time = time.monotonic()
+    with _rate_limit_lock:
+        elapsed = time.monotonic() - _last_request_time
+        if elapsed < MIN_SECONDS_BETWEEN_REQUESTS:
+            time.sleep(MIN_SECONDS_BETWEEN_REQUESTS - elapsed)
+        _last_request_time = time.monotonic()
 
 
 def nominatim_geocode(query: str, max_retries: int = 2) -> tuple[float, float] | None:
@@ -50,7 +53,7 @@ def nominatim_geocode(query: str, max_retries: int = 2) -> tuple[float, float] |
             if not results:
                 return None
             return float(results[0]["lat"]), float(results[0]["lon"])
-        except (requests.RequestException, ValueError, KeyError, IndexError):
+        except (requests.RequestException, ValueError, KeyError, IndexError, TypeError):
             if attempt < max_retries:
                 time.sleep(2 ** attempt)
                 continue
