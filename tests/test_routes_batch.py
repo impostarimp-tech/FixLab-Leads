@@ -44,6 +44,20 @@ def test_generate_lote_raises_when_origin_not_geocodable(tmp_path):
             pass
 
 
+def test_generate_lote_raises_for_non_positive_n(tmp_path):
+    db_path = str(tmp_path / "test.db")
+    db.init_db(db_path)
+    conn = db.get_connection(db_path)
+
+    with patch("routes_batch.geocoding.geocode_free_text", return_value=(-34.60, -58.401)):
+        for invalid_n in (0, -1):
+            try:
+                batch.generate_lote(conn, origen_texto="Local FixLab", n=invalid_n)
+                assert False, f"expected ValueError for n={invalid_n}"
+            except ValueError:
+                pass
+
+
 def test_generate_lote_uses_fewer_than_n_when_pool_is_smaller(tmp_path):
     db_path = str(tmp_path / "test.db")
     db.init_db(db_path)

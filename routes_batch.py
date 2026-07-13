@@ -16,6 +16,8 @@ def generate_lote(conn: sqlite3.Connection, origen_texto: str, n: int) -> dict:
     origin_coords = geocoding.geocode_free_text(origen_texto)
     if origin_coords is None:
         raise ValueError(f"No se pudo geocodificar el origen: {origen_texto}")
+    if n < 1:
+        raise ValueError(f"n debe ser un entero positivo, recibido: {n}")
 
     pool = [dict(row) for row in db.get_candidate_pool(conn)]
     nearest = algo.select_n_nearest(origin_coords, pool, n)
