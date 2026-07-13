@@ -290,14 +290,14 @@ HTML = """
 
   /* Tab selector */
   .tab-bar { display: flex; gap: 4px; margin-bottom: 20px; background: white; border: 1px solid #e5e5e5; border-radius: 10px; padding: 4px; }
-  .tab-btn { flex: 1; padding: 10px 8px; border: none; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; background: transparent; color: #888; transition: all .15s; }
+  .tab-btn { flex: 1; padding: 10px 8px; border: none; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; background: transparent; color: #888; transition: all .15s; text-decoration: none; text-align: center; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
   .tab-btn.active { background: #1a1a1a; color: white; }
   .tab-btn:hover:not(.active) { background: #f5f5f5; color: #333; }
 
   /* Historial */
-  .hist-table-wrap { overflow-x: auto; }
+  .hist-table-wrap { overflow-x: auto; overflow-y: auto; max-height: 260px; }
   .hist-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .hist-table th { padding: 8px 12px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #e5e5e5; }
+  .hist-table th { padding: 8px 12px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #e5e5e5; position: sticky; top: 0; background: white; }
   .hist-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
   .hist-table tr:last-child td { border-bottom: none; }
   .hist-empty { text-align: center; color: #aaa; padding: 24px; font-size: 13px; }
@@ -322,6 +322,7 @@ HTML = """
     <button class="tab-btn active" id="tab-repuestos" onclick="switchTab('repuestos')">Repuestos y Reparacion</button>
     <button class="tab-btn" id="tab-fundas"    onclick="switchTab('fundas')">Fundas</button>
     <button class="tab-btn" id="tab-telefonos" onclick="switchTab('telefonos')">Telefonos</button>
+    <a class="tab-btn" id="tab-rutas" href="/rutas/">Rutas</a>
   </div>
 
   <!-- FORMULARIO -->
