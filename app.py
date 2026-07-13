@@ -11,7 +11,13 @@ import json
 from datetime import datetime
 from flask import Flask, render_template_string, request, jsonify, Response
 
+import routes_app
+import routes_db
+
 app = Flask(__name__)
+
+routes_db.init_db()
+app.register_blueprint(routes_app.rutas_bp)
 
 HISTORIAL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "historial.json")
 
