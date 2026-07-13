@@ -34,3 +34,9 @@ def test_build_maps_link_rejects_more_than_nine_stops():
     stops = [{"lat": -34.6, "lng": -58.4} for _ in range(10)]
     with pytest.raises(ValueError):
         algo.build_maps_link((-34.6, -58.4), stops)
+
+
+def test_build_maps_link_accepts_exactly_nine_stops():
+    stops = [{"lat": -34.6 - i * 0.001, "lng": -58.4 - i * 0.001} for i in range(9)]
+    link = algo.build_maps_link((-34.6, -58.4), stops)
+    assert link.startswith("https://www.google.com/maps/dir/?")

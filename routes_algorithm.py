@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 
 EARTH_RADIUS_METERS = 6371000
 MAX_STOPS_PER_SUBLOTE = 9
+MAX_MAPS_WAYPOINTS = 9  # Google Maps Directions API hard limit on total stops (origin + waypoints + destination)
 
 
 def haversine_meters(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -56,11 +57,11 @@ def chunk_into_sublotes(ordered_points: list[dict], max_size: int = MAX_STOPS_PE
 
 def build_maps_link(origin: tuple[float, float], stops: list[dict]) -> str:
     """Builds a Google Maps directions URL: origin -> up to 8 waypoints -> destination
-    (the last stop). `stops` must have between 1 and 9 items."""
+    (the last stop). `stops` must have between 1 and MAX_MAPS_WAYPOINTS items."""
     if not stops:
         raise ValueError("stops must contain at least one point")
-    if len(stops) > MAX_STOPS_PER_SUBLOTE:
-        raise ValueError(f"stops must contain at most {MAX_STOPS_PER_SUBLOTE} points")
+    if len(stops) > MAX_MAPS_WAYPOINTS:
+        raise ValueError(f"stops must contain at most {MAX_MAPS_WAYPOINTS} points")
 
     waypoints = stops[:-1]
     destination = stops[-1]
