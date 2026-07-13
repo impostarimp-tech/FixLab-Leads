@@ -162,6 +162,11 @@ def test_with_city_suffix_is_case_insensitive():
     assert geo._with_city_suffix(text) == text
 
 
+def test_with_city_suffix_inserts_before_trailing_argentina_without_buenos_aires():
+    text = "Av. Galicia 99, Avellaneda, Argentina"
+    assert geo._with_city_suffix(text) == "Av. Galicia 99, Avellaneda, Buenos Aires, Argentina"
+
+
 @patch("routes_geocoding.time.sleep", return_value=None)
 @patch("routes_geocoding.requests.get")
 def test_nominatim_geocode_rejects_results_outside_amba_bounds(mock_get, _mock_sleep):

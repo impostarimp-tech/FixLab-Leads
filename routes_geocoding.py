@@ -65,14 +65,22 @@ def _insert_postal_code_comma(direccion: str) -> str:
     return _POSTAL_CODE_CITY_RE.sub(r"\1, \2", direccion)
 
 
+_TRAILING_ARGENTINA_RE = re.compile(r",?\s*Argentina\s*$", re.IGNORECASE)
+
+
 def _with_city_suffix(text: str) -> str:
     """Appends ', Buenos Aires, Argentina' unless the text already mentions
     Buenos Aires. Scraped addresses usually already include full city context
     (e.g. "Ciudad Autónoma de Buenos Aires, Argentina"), and appending our own
     suffix on top creates a redundant double-mention that breaks Nominatim's
-    parser."""
-    if "buenos aires" in text.lower():
+    parser. If the text already ends in "Argentina" but doesn't mention Buenos
+    Aires (e.g. "Avellaneda, Argentina"), "Buenos Aires" is inserted before that
+    trailing "Argentina" instead of appending a second one."""
+    lower = text.lower()
+    if "buenos aires" in lower:
         return text
+    if "argentina" in lower:
+        return _TRAILING_ARGENTINA_RE.sub(", Buenos Aires, Argentina", text)
     return f"{text}, Buenos Aires, Argentina"
 
 
