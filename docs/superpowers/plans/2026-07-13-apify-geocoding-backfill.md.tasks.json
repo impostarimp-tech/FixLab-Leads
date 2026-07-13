@@ -1,0 +1,25 @@
+{
+  "planPath": "docs/superpowers/plans/2026-07-13-apify-geocoding-backfill.md",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 1: routes_apify_geocoding.py — matching y verificación",
+      "status": "pending",
+      "description": "**Goal:** Módulo puro con la lógica de matching/verificación/batching para el backfill de Apify, sin dependencias de red.\n\n**Files:**\n- Create: `routes_apify_geocoding.py`\n- Test: `tests/test_routes_apify_geocoding.py`\n\n**Acceptance Criteria:**\n- [ ] is_real_place_id distingue Place_ID real de clave sintetica NOID:\n- [ ] name_similarity compara ignorando mayusculas/acentos\n- [ ] verify_placeid_match / verify_name_match aplican el bounding box AMBA\n- [ ] chunk divide listas en lotes del tamano pedido\n- [ ] build_placeid_run_input / build_search_run_input arman el input correcto\n- [ ] group_results_by_search_string agrupa resultados por el nombre que los origino\n\n**Verify:** `pytest tests/test_routes_apify_geocoding.py -v`\n\n```json:metadata\n{\"files\": [\"routes_apify_geocoding.py\", \"tests/test_routes_apify_geocoding.py\"], \"verifyCommand\": \"pytest tests/test_routes_apify_geocoding.py -v\", \"acceptanceCriteria\": [\"is_real_place_id distingue real de sintetico\", \"name_similarity ignora case/acentos\", \"verify_placeid_match y verify_name_match aplican AMBA\", \"chunk divide correctamente\", \"build_*_run_input arma el input correcto\", \"group_results_by_search_string agrupa por searchString\"]}\n```"
+    },
+    {
+      "id": 1,
+      "subject": "Task 2: routes_apify_sheet_writeback.py — escritura acotada al Sheet",
+      "status": "pending",
+      "description": "**Goal:** Módulo con la lógica de ubicar filas en el Sheet (por Place_ID o por Negocio) y escribir la columna Direccion en batch.\n\n**Files:**\n- Create: `routes_apify_sheet_writeback.py`\n- Test: `tests/test_routes_apify_sheet_writeback.py`\n\n**Acceptance Criteria:**\n- [ ] is_direccion_placeholder detecta vacio/\"-\"\n- [ ] build_row_index indexa una pestaña una sola vez por Place_ID y por Negocio\n- [ ] find_row prioriza Place_ID, cae a Negocio, devuelve None si no hay match\n- [ ] direccion_column_index ubica la columna por header\n- [ ] apply_direccion_updates escribe en un unico update_cells por pestaña, no-op si no hay updates\n\n**Verify:** `pytest tests/test_routes_apify_sheet_writeback.py -v`\n\n```json:metadata\n{\"files\": [\"routes_apify_sheet_writeback.py\", \"tests/test_routes_apify_sheet_writeback.py\"], \"verifyCommand\": \"pytest tests/test_routes_apify_sheet_writeback.py -v\", \"acceptanceCriteria\": [\"is_direccion_placeholder detecta vacio y guion\", \"build_row_index indexa por place_id y negocio\", \"find_row prioriza place_id y cae a negocio\", \"direccion_column_index ubica columna por header\", \"apply_direccion_updates hace un solo batch call\"]}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 3: backfill_apify_geocoding.py — script orquestador",
+      "status": "pending",
+      "blockedBy": [0, 1],
+      "description": "**Goal:** Script CLI que orquesta las dos fases de geocoding via Apify (Place_ID directo, busqueda por nombre en lotes) y la escritura al Sheet, con modo --dry-run.\n\n**Files:**\n- Create: `backfill_apify_geocoding.py`\n- Test: `tests/test_backfill_apify_geocoding.py`\n\n**Acceptance Criteria:**\n- [ ] Fase Place_ID: acepta dentro de AMBA, rechaza fuera, actualiza leads_cache con apify_placeid\n- [ ] Fase nombre: lotea, mapea resultados por searchString a los leads correctos, actualiza con apify_nombre\n- [ ] --dry-run gasta creditos de Apify pero no escribe en DB ni Sheet\n- [ ] Escritura al Sheet solo para leads con direccion original vacia/\"-\" y resueltos por Apify\n- [ ] Una corrida de Apify que falla no rompe el script\n- [ ] Una pestaña de Sheet no encontrada no rompe el script\n\n**Verify:** `pytest tests/test_backfill_apify_geocoding.py -v && pytest -v`\n\n```json:metadata\n{\"files\": [\"backfill_apify_geocoding.py\", \"tests/test_backfill_apify_geocoding.py\"], \"verifyCommand\": \"pytest tests/test_backfill_apify_geocoding.py -v && pytest -v\", \"acceptanceCriteria\": [\"fase placeid acepta/rechaza segun AMBA\", \"fase nombre mapea lotes al lead correcto\", \"dry-run no escribe DB ni Sheet\", \"sheet solo se actualiza para direccion vacia o guion\", \"fallo de una corrida de apify no rompe el script\", \"tab no encontrada no rompe el script\"]}\n```"
+    }
+  ],
+  "lastUpdated": "2026-07-13T00:00:00Z"
+}
