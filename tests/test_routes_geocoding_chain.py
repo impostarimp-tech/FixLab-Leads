@@ -84,3 +84,93 @@ def test_geocode_free_text_appends_city_and_country():
         result = geo.geocode_free_text("Av. Corrientes 1000")
         mock_nominatim.assert_called_once_with("Av. Corrientes 1000, Buenos Aires, Argentina")
         assert result == (-34.6, -58.4)
+
+
+def test_expand_abbreviations_replaces_known_abbreviations():
+    direccion = "Av. Cnel. Díaz 1862, C1425 Cdad. Autónoma de Buenos Aires, Argentina"
+    assert geo._expand_abbreviations(direccion) == (
+        "Av. Coronel Díaz 1862, C1425 Ciudad Autónoma de Buenos Aires, Argentina"
+    )
+
+
+def test_expand_abbreviations_leaves_addresses_without_abbreviations_unchanged():
+    direccion = "Av. Rivadavia 2000, Buenos Aires, Argentina"
+    assert geo._expand_abbreviations(direccion) == direccion
+
+
+def test_expand_abbreviations_handles_multiple_different_abbreviations():
+    direccion = "Gral. Güemes 897, Dr. Ricardo Balbín 2570"
+    assert geo._expand_abbreviations(direccion) == "General Güemes 897, Doctor Ricardo Balbín 2570"
+
+
+@patch("routes_geocoding.nominatim_geocode")
+def test_geocode_lead_expands_abbreviations_before_querying_direccion(mock_nominatim):
+    mock_nominatim.return_value = (-34.6, -58.4)
+    geo.geocode_lead(
+        negocio="Taller X",
+        direccion="Av. Cnel. Díaz 1862, Cdad. Autónoma de Buenos Aires, Argentina",
+        maps_url=None,
+    )
+    mock_nominatim.assert_called_once_with(
+        "Av. Coronel Díaz 1862, Ciudad Autónoma de Buenos Aires, Argentina"
+    )
+
+
+def test_insert_postal_code_comma_separates_extended_cpa_code():
+    direccion = "Rincón 37, C1081ABA Ciudad Autónoma de Buenos Aires, Argentina"
+    assert geo._insert_postal_code_comma(direccion) == (
+        "Rincón 37, C1081ABA, Ciudad Autónoma de Buenos Aires, Argentina"
+    )
+
+
+def test_insert_postal_code_comma_separates_simple_code_before_provincia():
+    direccion = "Av. Maipú 88, B1602 Provincia de Buenos Aires, Argentina"
+    assert geo._insert_postal_code_comma(direccion) == (
+        "Av. Maipú 88, B1602, Provincia de Buenos Aires, Argentina"
+    )
+
+
+def test_insert_postal_code_comma_leaves_already_separated_address_unchanged():
+    direccion = "Rincón 37, C1081ABA, Ciudad Autónoma de Buenos Aires, Argentina"
+    assert geo._insert_postal_code_comma(direccion) == direccion
+
+
+@patch("routes_geocoding.nominatim_geocode")
+def test_geocode_lead_inserts_postal_code_comma_before_querying_direccion(mock_nominatim):
+    mock_nominatim.return_value = (-34.6, -58.4)
+    geo.geocode_lead(
+        negocio="Taller X",
+        direccion="Rincón 37, C1081ABA Cdad. Autónoma de Buenos Aires, Argentina",
+        maps_url=None,
+    )
+    mock_nominatim.assert_called_once_with(
+        "Rincón 37, C1081ABA, Ciudad Autónoma de Buenos Aires, Argentina"
+    )
+
+
+def test_with_city_suffix_skips_when_buenos_aires_already_mentioned():
+    text = "Av. Coronel Díaz 1862, Ciudad Autónoma de Buenos Aires, Argentina"
+    assert geo._with_city_suffix(text) == text
+
+
+def test_with_city_suffix_appends_when_not_mentioned():
+    assert geo._with_city_suffix("Av. Rivadavia 100") == "Av. Rivadavia 100, Buenos Aires, Argentina"
+
+
+def test_with_city_suffix_is_case_insensitive():
+    text = "Av. Rivadavia 100, BUENOS AIRES, argentina"
+    assert geo._with_city_suffix(text) == text
+
+
+@patch("routes_geocoding.time.sleep", return_value=None)
+@patch("routes_geocoding.requests.get")
+def test_nominatim_geocode_rejects_results_outside_amba_bounds(mock_get, _mock_sleep):
+    mock_get.return_value = _fake_response([{"lat": "-36.0158034", "lon": "-59.0941764"}])
+    assert geo.nominatim_geocode("direccion ambigua") is None
+
+
+@patch("routes_geocoding.time.sleep", return_value=None)
+@patch("routes_geocoding.requests.get")
+def test_nominatim_geocode_accepts_results_inside_amba_bounds(mock_get, _mock_sleep):
+    mock_get.return_value = _fake_response([{"lat": "-34.5895263", "lon": "-58.4106593"}])
+    assert geo.nominatim_geocode("Av. Coronel Diaz 1862") == (-34.5895263, -58.4106593)

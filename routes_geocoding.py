@@ -21,6 +21,72 @@ def parse_coords_from_maps_url(maps_url: str | None) -> tuple[float, float] | No
     return float(match.group(1)), float(match.group(2))
 
 
+_STREET_ABBREVIATIONS = {
+    "Cdad.": "Ciudad",
+    "Gral.": "General",
+    "Tte.": "Teniente",
+    "Sta.": "Santa",
+    "Pres.": "Presidente",
+    "Pdte.": "Presidente",
+    "Dr.": "Doctor",
+    "Dra.": "Doctora",
+    "Cnel.": "Coronel",
+    "Almte.": "Almirante",
+    "Gdor.": "Gobernador",
+    "Pje.": "Pasaje",
+    "Cno.": "Camino",
+    "Blvd.": "Boulevard",
+    "Comod.": "Comodoro",
+    "Ing.": "Ingeniero",
+    "Int.": "Intendente",
+}
+
+_STREET_ABBREVIATION_RE = re.compile(
+    r"\b(?:" + "|".join(re.escape(abbr) for abbr in _STREET_ABBREVIATIONS) + r")"
+)
+
+
+def _expand_abbreviations(direccion: str) -> str:
+    """Expands common Argentine street-type/title abbreviations (Cdad., Gral.,
+    Cnel., etc.) that Nominatim's free-text search doesn't recognize, without
+    changing the address's actual meaning."""
+    return _STREET_ABBREVIATION_RE.sub(
+        lambda m: _STREET_ABBREVIATIONS[m.group(0)], direccion
+    )
+
+
+_POSTAL_CODE_CITY_RE = re.compile(r"(\b[A-Z]\d{4}(?:[A-Z]{2,3})?)\s+(Ciudad|Provincia)\b")
+
+
+def _insert_postal_code_comma(direccion: str) -> str:
+    """Inserts a comma between a postal code (e.g. C1081ABA, B1602) and the
+    "Ciudad"/"Provincia" that follows it — scraped addresses often run them
+    together, which breaks Nominatim's parser."""
+    return _POSTAL_CODE_CITY_RE.sub(r"\1, \2", direccion)
+
+
+def _with_city_suffix(text: str) -> str:
+    """Appends ', Buenos Aires, Argentina' unless the text already mentions
+    Buenos Aires. Scraped addresses usually already include full city context
+    (e.g. "Ciudad Autónoma de Buenos Aires, Argentina"), and appending our own
+    suffix on top creates a redundant double-mention that breaks Nominatim's
+    parser."""
+    if "buenos aires" in text.lower():
+        return text
+    return f"{text}, Buenos Aires, Argentina"
+
+
+# Rough bounding box for AMBA (Buenos Aires metro area: CABA + Greater Buenos
+# Aires). This tool only ever deals with leads/routes in this area, so any
+# Nominatim match outside it is treated as a wrong match rather than accepted.
+AMBA_LAT_MIN, AMBA_LAT_MAX = -35.3, -34.3
+AMBA_LNG_MIN, AMBA_LNG_MAX = -59.3, -58.0
+
+
+def _within_amba_bounds(lat: float, lng: float) -> bool:
+    return AMBA_LAT_MIN <= lat <= AMBA_LAT_MAX and AMBA_LNG_MIN <= lng <= AMBA_LNG_MAX
+
+
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 NOMINATIM_USER_AGENT = "fixlab-leads-routes/1.0 (uso interno)"
 MIN_SECONDS_BETWEEN_REQUESTS = 1.0
@@ -52,7 +118,10 @@ def nominatim_geocode(query: str, max_retries: int = 2) -> tuple[float, float] |
             results = response.json()
             if not results:
                 return None
-            return float(results[0]["lat"]), float(results[0]["lon"])
+            lat, lng = float(results[0]["lat"]), float(results[0]["lon"])
+            if not _within_amba_bounds(lat, lng):
+                return None
+            return lat, lng
         except (requests.RequestException, ValueError, KeyError, IndexError, TypeError):
             if attempt < max_retries:
                 time.sleep(2 ** attempt)
@@ -71,11 +140,12 @@ def geocode_lead(
         return coords, "maps_url"
 
     if direccion:
-        coords = nominatim_geocode(f"{direccion}, Buenos Aires, Argentina")
+        normalizado = _insert_postal_code_comma(_expand_abbreviations(direccion))
+        coords = nominatim_geocode(_with_city_suffix(normalizado))
         if coords:
             return coords, "direccion"
 
-    coords = nominatim_geocode(f"{negocio}, Buenos Aires, Argentina")
+    coords = nominatim_geocode(_with_city_suffix(negocio))
     if coords:
         return coords, "negocio"
 
@@ -84,4 +154,4 @@ def geocode_lead(
 
 def geocode_free_text(query: str) -> tuple[float, float] | None:
     """Geocodes an arbitrary manually-typed query (e.g. a route origin address)."""
-    return nominatim_geocode(f"{query}, Buenos Aires, Argentina")
+    return nominatim_geocode(_with_city_suffix(query))
