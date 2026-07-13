@@ -103,12 +103,12 @@ def home():
 
 @rutas_bp.route("/generar", methods=["POST"])
 def generar():
-    origen = request.form["origen"]
-    n = int(request.form["n"])
     conn = _conn()
     try:
+        origen = request.form["origen"]
+        n = int(request.form["n"])
         resultado = batch.generate_lote(conn, origen, n)
-    except ValueError as exc:
+    except (KeyError, ValueError) as exc:
         return render_template_string(PAGE_ERROR, error=str(exc)), 400
     finally:
         conn.close()
