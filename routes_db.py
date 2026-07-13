@@ -112,6 +112,15 @@ def get_failed_leads(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     return conn.execute("SELECT * FROM leads_cache WHERE geocode_source = 'fallido'").fetchall()
 
 
+def find_lead_by_name(conn: sqlite3.Connection, negocio: str) -> sqlite3.Row | None:
+    """Finds a geocoded lead by exact (case-insensitive) business name — used to
+    let an origin be typed as it appears on the map instead of a street address."""
+    return conn.execute(
+        "SELECT * FROM leads_cache WHERE lat IS NOT NULL AND LOWER(negocio) = LOWER(?) LIMIT 1",
+        (negocio,),
+    ).fetchone()
+
+
 def get_candidate_pool(conn: sqlite3.Connection, reappear_after_days: int = 30) -> list[sqlite3.Row]:
     """Leads that are geocoded and either never shared, or shared 30+ days ago."""
     cutoff = (datetime.utcnow() - timedelta(days=reappear_after_days)).isoformat()

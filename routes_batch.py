@@ -12,14 +12,21 @@ import routes_geocoding as geocoding
 def generate_lote(
     conn: sqlite3.Connection, origen_texto: str, n: int, origen_coords: tuple[float, float] | None = None
 ) -> dict:
-    """Geocodes the origin (unless origen_coords is already known, e.g. a saved
-    origin or a zone with a pre-vetted query), selects up to n nearby non-shared
-    candidates, orders them into a continuous route, splits into <=9-stop
-    sub-lotes chained end-to-end, and persists everything. Returns a summary dict."""
+    """Resolves the origin's coordinates (in order: origen_coords if already known
+    -- e.g. a saved origin or a zone with a pre-vetted query --, then a matching
+    lead's own coordinates if origen_texto is typed exactly as it appears on the
+    map, then Nominatim geocoding as a last resort), selects up to n nearby
+    non-shared candidates, orders them into a continuous route, splits into
+    <=9-stop sub-lotes chained end-to-end, and persists everything. Returns a
+    summary dict."""
     if origen_coords is not None:
         origin_coords = origen_coords
     else:
-        origin_coords = geocoding.geocode_free_text(origen_texto)
+        lead_match = db.find_lead_by_name(conn, origen_texto)
+        if lead_match is not None:
+            origin_coords = (lead_match["lat"], lead_match["lng"])
+        else:
+            origin_coords = geocoding.geocode_free_text(origen_texto)
     if origin_coords is None:
         raise ValueError(f"No se pudo geocodificar el origen: {origen_texto}")
     if n < 1:

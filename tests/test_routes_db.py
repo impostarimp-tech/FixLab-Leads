@@ -62,6 +62,25 @@ def test_get_pending_geocode_returns_pendiente_and_fallido(conn):
     assert pending_ids == {pending_id, failed_id}
 
 
+def test_find_lead_by_name_matches_case_insensitively(conn):
+    lead_id = db.upsert_lead(conn, "P1", "Repuestos", "Taller Apple Fix", "Dir A", "")
+    db.set_geocode_result(conn, lead_id, -34.6, -58.4, "direccion")
+
+    found = db.find_lead_by_name(conn, "taller APPLE fix")
+
+    assert found["id"] == lead_id
+
+
+def test_find_lead_by_name_returns_none_when_not_geocoded(conn):
+    db.upsert_lead(conn, "P1", "Repuestos", "Taller Pendiente", "Dir A", "")
+
+    assert db.find_lead_by_name(conn, "Taller Pendiente") is None
+
+
+def test_find_lead_by_name_returns_none_when_no_match(conn):
+    assert db.find_lead_by_name(conn, "No existe") is None
+
+
 def test_get_candidate_pool_excludes_recently_shared(conn):
     lead_a = db.upsert_lead(conn, "P1", "Repuestos", "A", "Dir A", "")
     db.set_geocode_result(conn, lead_a, -34.6, -58.4, "direccion")

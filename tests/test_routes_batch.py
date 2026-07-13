@@ -76,6 +76,38 @@ def test_generate_lote_skips_geocoding_when_origen_coords_given(tmp_path):
     assert (lote["origen_lat"], lote["origen_lng"]) == (-34.60, -58.401)
 
 
+def test_generate_lote_uses_matching_lead_coords_instead_of_geocoding(tmp_path):
+    db_path = str(tmp_path / "test.db")
+    db.init_db(db_path)
+    conn = db.get_connection(db_path)
+    origin_lead_id = db.upsert_lead(conn, "P1", "Repuestos", "Taller Apple Fix", "Dir Origen", "")
+    db.set_geocode_result(conn, origin_lead_id, -34.60, -58.40, "direccion")
+    candidate_id = db.upsert_lead(conn, "P2", "Repuestos", "Candidato", "Dir", "")
+    db.set_geocode_result(conn, candidate_id, -34.601, -58.401, "direccion")
+
+    with patch("routes_batch.geocoding.geocode_free_text") as mock_geocode:
+        result = batch.generate_lote(conn, origen_texto="taller APPLE fix", n=5)
+
+    mock_geocode.assert_not_called()
+    lote = conn.execute("SELECT * FROM lotes WHERE id = ?", (result["lote_id"],)).fetchone()
+    assert (lote["origen_lat"], lote["origen_lng"]) == (-34.60, -58.40)
+
+
+def test_generate_lote_falls_back_to_geocoding_when_no_lead_matches(tmp_path):
+    db_path = str(tmp_path / "test.db")
+    db.init_db(db_path)
+    conn = db.get_connection(db_path)
+    lead_id = db.upsert_lead(conn, "P1", "Repuestos", "Unico", "Dir", "")
+    db.set_geocode_result(conn, lead_id, -34.60, -58.40, "direccion")
+
+    with patch("routes_batch.geocoding.geocode_free_text", return_value=(-34.62, -58.42)) as mock_geocode:
+        result = batch.generate_lote(conn, origen_texto="Av. Rivadavia 100", n=5)
+
+    mock_geocode.assert_called_once_with("Av. Rivadavia 100")
+    lote = conn.execute("SELECT * FROM lotes WHERE id = ?", (result["lote_id"],)).fetchone()
+    assert (lote["origen_lat"], lote["origen_lng"]) == (-34.62, -58.42)
+
+
 def test_generate_lote_uses_fewer_than_n_when_pool_is_smaller(tmp_path):
     db_path = str(tmp_path / "test.db")
     db.init_db(db_path)

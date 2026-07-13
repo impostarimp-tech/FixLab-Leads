@@ -172,7 +172,8 @@ PAGE_HOME = """
     </select>
   </label>
   <div id="origenLibreWrap" style="display:none;">
-    <label>Direccion: <input type="text" id="origenLibre" name="origen_libre"></label>
+    <label>Direccion o nombre del negocio (como figura en el mapa):
+      <input type="text" id="origenLibre" name="origen_libre"></label>
   </div>
   <label>Cantidad de direcciones: <input type="number" name="n" value="40" min="1" required></label><br>
   <button type="submit">Generar lote</button>
