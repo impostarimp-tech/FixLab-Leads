@@ -46,7 +46,7 @@ def test_sync_all_tabs_inserts_new_leads_from_each_category(tmp_path, monkeypatc
     ]
 
 
-def test_sync_all_tabs_skips_rows_already_cached_by_place_id(tmp_path):
+def test_sync_all_tabs_skips_rows_already_cached_by_place_id(tmp_path, monkeypatch):
     db_path = str(tmp_path / "test.db")
     db.init_db(db_path)
     conn = db.get_connection(db_path)
@@ -60,6 +60,7 @@ def test_sync_all_tabs_skips_rows_already_cached_by_place_id(tmp_path):
         sync.CATEGORIA_TABS["Telefonos"]: [],
     }
     client = _fake_client(tabs_data)
+    monkeypatch.setattr(sync.geocoding, "geocode_lead", lambda **kwargs: ((-34.6, -58.4), "direccion"))
 
     summary = sync.sync_all_tabs(conn, client)
 
