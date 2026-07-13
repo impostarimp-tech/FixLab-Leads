@@ -1,7 +1,9 @@
 """Flask blueprint for the commercial-routes generator UI."""
 from __future__ import annotations
 
-from flask import Blueprint, redirect, render_template_string, request, url_for
+import json
+
+from flask import Blueprint, Response, redirect, render_template_string, request, url_for
 
 import routes_batch as batch
 import routes_db as db
@@ -23,16 +25,60 @@ PAGE_HOME = """
   <label>Cantidad de direcciones: <input type="number" name="n" value="40" min="1" required></label><br>
   <button type="submit">Generar lote</button>
 </form>
-<form method="post" action="{{ url_for('rutas.sincronizar') }}">
-  <button type="submit">Sincronizar leads desde el Sheet</button>
-</form>
-{% if sync_summary %}
-  <p>Sync: {{ sync_summary.nuevos }} nuevos, {{ sync_summary.geocodificados }} geocodificados,
-     {{ sync_summary.fallidos }} fallidos.</p>
-{% endif %}
+
+<button type="button" id="syncBtn" onclick="sincronizar()">Sincronizar leads desde el Sheet</button>
+<p id="syncProgress"></p>
+<div id="syncLog" style="max-height: 200px; overflow-y: auto; font-size: 13px; color: #555;"></div>
+
 <p><a href="{{ url_for('rutas.historial') }}">Ver historial de lotes</a> |
    <a href="{{ url_for('rutas.fallidos') }}">Ver leads no geocodificables</a> |
    <a href="{{ url_for('rutas.mapa') }}">Ver mapa</a></p>
+
+<script>
+function appendSyncLog(msg) {
+  var el = document.getElementById('syncLog');
+  var p = document.createElement('p');
+  p.textContent = msg;
+  el.appendChild(p);
+  el.scrollTop = el.scrollHeight;
+}
+
+function sincronizar() {
+  var btn = document.getElementById('syncBtn');
+  var progress = document.getElementById('syncProgress');
+  document.getElementById('syncLog').innerHTML = '';
+  progress.textContent = '';
+  btn.disabled = true;
+
+  var src = new EventSource('{{ url_for("rutas.sincronizar_stream") }}');
+
+  src.onmessage = function(e) {
+    var data = JSON.parse(e.data);
+    if (data.type === 'log') {
+      appendSyncLog(data.msg);
+    } else if (data.type === 'progress') {
+      progress.textContent = 'Geocodificando: ' + data.actual + ' / ' + data.total +
+        (data.negocio ? ' (' + data.negocio + ')' : '');
+    } else if (data.type === 'done') {
+      progress.textContent = '';
+      appendSyncLog('Listo: ' + data.summary.nuevos + ' nuevos, ' +
+        data.summary.geocodificados + ' geocodificados, ' + data.summary.fallidos + ' fallidos.');
+      btn.disabled = false;
+      src.close();
+    } else if (data.type === 'error') {
+      appendSyncLog('Error: ' + data.msg);
+      btn.disabled = false;
+      src.close();
+    }
+  };
+
+  src.onerror = function() {
+    appendSyncLog('Se perdio la conexion con el servidor.');
+    btn.disabled = false;
+    src.close();
+  };
+}
+</script>
 """
 
 PAGE_RESULTADO = """
@@ -178,7 +224,7 @@ PAGE_MAPA = """
 
 @rutas_bp.route("/", methods=["GET"])
 def home():
-    return render_template_string(PAGE_HOME, sync_summary=None)
+    return render_template_string(PAGE_HOME)
 
 
 @rutas_bp.route("/generar", methods=["POST"])
@@ -195,19 +241,20 @@ def generar():
     return render_template_string(PAGE_RESULTADO, resultado=resultado)
 
 
-@rutas_bp.route("/sincronizar", methods=["POST"])
-def sincronizar():
-    conn = _conn()
-    try:
-        client = sheet_sync.get_sheets_client()
-        summary = sheet_sync.sync_all_tabs(conn, client)
-    except Exception as exc:
-        return render_template_string(
-            PAGE_ERROR, error=f"No se pudo sincronizar con el Sheet: {exc}"
-        ), 502
-    finally:
-        conn.close()
-    return render_template_string(PAGE_HOME, sync_summary=summary)
+@rutas_bp.route("/sincronizar/stream", methods=["GET"])
+def sincronizar_stream():
+    def generate():
+        conn = _conn()
+        try:
+            client = sheet_sync.get_sheets_client()
+            for event in sheet_sync.sync_all_tabs_progress(conn, client):
+                yield f"data: {json.dumps(event)}\n\n"
+        except Exception as exc:
+            yield f"data: {json.dumps({'type': 'error', 'msg': str(exc)})}\n\n"
+        finally:
+            conn.close()
+
+    return Response(generate(), mimetype="text/event-stream")
 
 
 @rutas_bp.route("/sublotes/<int:sublote_id>/compartir", methods=["POST"])

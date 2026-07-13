@@ -89,3 +89,68 @@ def test_row_place_id_falls_back_to_name_and_address_when_missing():
     row = {"Negocio": "Taller Z", "Direccion": "Calle 123", "Place_ID": ""}
     key = sync._row_place_id(row, "Repuestos")
     assert key == "NOID:Repuestos:taller z|calle 123"
+
+
+def test_sync_all_tabs_progress_yields_log_and_progress_events(tmp_path, monkeypatch):
+    db_path = str(tmp_path / "test.db")
+    db.init_db(db_path)
+    conn = db.get_connection(db_path)
+
+    tabs_data = {
+        sync.CATEGORIA_TABS["Repuestos"]: [
+            {"Negocio": "Taller A", "Direccion": "Dir A", "Maps_URL": "", "Place_ID": "PA"},
+            {"Negocio": "Taller B", "Direccion": "Dir B", "Maps_URL": "", "Place_ID": "PB"},
+        ],
+        sync.CATEGORIA_TABS["Fundas"]: [],
+        sync.CATEGORIA_TABS["Telefonos"]: [],
+    }
+    client = _fake_client(tabs_data)
+    monkeypatch.setattr(sync.geocoding, "geocode_lead", lambda **kwargs: ((-34.6, -58.4), "direccion"))
+
+    events = list(sync.sync_all_tabs_progress(conn, client))
+
+    log_events = [e for e in events if e["type"] == "log"]
+    progress_events = [e for e in events if e["type"] == "progress"]
+    done_events = [e for e in events if e["type"] == "done"]
+
+    assert any("Repuestos" in e["msg"] or "repuestos" in e["msg"].lower() for e in log_events)
+    assert [e["actual"] for e in progress_events] == [1, 2]
+    assert all(e["total"] == 2 for e in progress_events)
+    assert len(done_events) == 1
+    assert done_events[0]["summary"] == {"nuevos": 2, "geocodificados": 2, "fallidos": 0}
+
+
+def test_sync_all_tabs_progress_skips_geocode_log_when_nothing_pending(tmp_path):
+    db_path = str(tmp_path / "test.db")
+    db.init_db(db_path)
+    conn = db.get_connection(db_path)
+    tabs_data = {
+        sync.CATEGORIA_TABS["Repuestos"]: [],
+        sync.CATEGORIA_TABS["Fundas"]: [],
+        sync.CATEGORIA_TABS["Telefonos"]: [],
+    }
+    client = _fake_client(tabs_data)
+
+    events = list(sync.sync_all_tabs_progress(conn, client))
+
+    assert not any("pendientes" in e.get("msg", "") for e in events)
+    assert events[-1] == {"type": "done", "summary": {"nuevos": 0, "geocodificados": 0, "fallidos": 0}}
+
+
+def test_sync_all_tabs_wrapper_still_returns_final_summary(tmp_path, monkeypatch):
+    db_path = str(tmp_path / "test.db")
+    db.init_db(db_path)
+    conn = db.get_connection(db_path)
+    tabs_data = {
+        sync.CATEGORIA_TABS["Repuestos"]: [
+            {"Negocio": "Taller A", "Direccion": "Dir A", "Maps_URL": "", "Place_ID": "PA"},
+        ],
+        sync.CATEGORIA_TABS["Fundas"]: [],
+        sync.CATEGORIA_TABS["Telefonos"]: [],
+    }
+    client = _fake_client(tabs_data)
+    monkeypatch.setattr(sync.geocoding, "geocode_lead", lambda **kwargs: ((-34.6, -58.4), "direccion"))
+
+    summary = sync.sync_all_tabs(conn, client)
+
+    assert summary == {"nuevos": 1, "geocodificados": 1, "fallidos": 0}

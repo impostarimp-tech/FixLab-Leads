@@ -68,14 +68,18 @@ def _row_place_id(row: dict, categoria: str) -> str:
     return f"NOID:{categoria}:{negocio}|{direccion}"
 
 
-def sync_all_tabs(conn: sqlite3.Connection, client: gspread.Client) -> dict:
-    """Reads all 3 tabs, inserts new leads into leads_cache, geocodes pending/failed rows.
-    Returns {"nuevos": int, "geocodificados": int, "fallidos": int}."""
+def sync_all_tabs_progress(conn: sqlite3.Connection, client: gspread.Client):
+    """Same work as sync_all_tabs, but yields progress events as it goes:
+    {"type": "log", "msg": str} for tab-level milestones,
+    {"type": "progress", "actual": int, "total": int, "negocio": str} per lead geocoded,
+    and a final {"type": "done", "summary": {...}}."""
     sh = client.open_by_url(SPREADSHEET_URL)
     nuevos = 0
 
     for categoria, tab_name in CATEGORIA_TABS.items():
+        yield {"type": "log", "msg": f"Leyendo '{tab_name}'..."}
         ws = sh.worksheet(tab_name)
+        nuevos_en_tab = 0
         for row in ws.get_all_records():
             negocio = (row.get("Negocio") or "").strip()
             if not negocio:
@@ -95,10 +99,17 @@ def sync_all_tabs(conn: sqlite3.Connection, client: gspread.Client) -> dict:
                 (row.get("Maps_URL") or "").strip(),
             )
             nuevos += 1
+            nuevos_en_tab += 1
+        yield {"type": "log", "msg": f"{tab_name}: {nuevos_en_tab} nuevos."}
+
+    pendientes = db.get_pending_geocode(conn)
+    total_pendientes = len(pendientes)
+    if total_pendientes:
+        yield {"type": "log", "msg": f"Geocodificando {total_pendientes} leads pendientes..."}
 
     geocodificados = 0
     fallidos = 0
-    for row in db.get_pending_geocode(conn):
+    for i, row in enumerate(pendientes, start=1):
         coords, source = geocoding.geocode_lead(
             negocio=row["negocio"], direccion=row["direccion"], maps_url=row["maps_url"]
         )
@@ -108,5 +119,23 @@ def sync_all_tabs(conn: sqlite3.Connection, client: gspread.Client) -> dict:
         else:
             db.set_geocode_result(conn, row["id"], None, None, "fallido")
             fallidos += 1
+        yield {
+            "type": "progress",
+            "actual": i,
+            "total": total_pendientes,
+            "negocio": row["negocio"],
+        }
 
-    return {"nuevos": nuevos, "geocodificados": geocodificados, "fallidos": fallidos}
+    summary = {"nuevos": nuevos, "geocodificados": geocodificados, "fallidos": fallidos}
+    yield {"type": "done", "summary": summary}
+
+
+def sync_all_tabs(conn: sqlite3.Connection, client: gspread.Client) -> dict:
+    """Reads all 3 tabs, inserts new leads into leads_cache, geocodes pending/failed rows.
+    Returns {"nuevos": int, "geocodificados": int, "fallidos": int}. Synchronous wrapper
+    around sync_all_tabs_progress for callers that don't need progress events."""
+    summary = None
+    for event in sync_all_tabs_progress(conn, client):
+        if event["type"] == "done":
+            summary = event["summary"]
+    return summary
