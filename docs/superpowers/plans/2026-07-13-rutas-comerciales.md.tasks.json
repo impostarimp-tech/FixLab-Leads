@@ -4,60 +4,60 @@
     {
       "id": 0,
       "subject": "Task 1: SQLite schema & data access layer (routes_db.py)",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** pytest config + fully-tested routes_db.py with schema and CRUD (leads_cache, lotes, sublotes, sublote_leads).\n\n**Files:**\n- Create: pytest.ini\n- Create: routes_db.py\n- Test: tests/test_routes_db.py\n\n**Verify:** pytest tests/test_routes_db.py -v\n\n```json:metadata\n{\"files\": [\"pytest.ini\", \"routes_db.py\", \"tests/test_routes_db.py\"], \"verifyCommand\": \"pytest tests/test_routes_db.py -v\", \"acceptanceCriteria\": [\"init_db creates all 4 tables\", \"upsert_lead idempotent by place_id\", \"set_geocode_result updates lat/lng/source\", \"get_pending_geocode returns pendiente+fallido\", \"get_candidate_pool excludes leads shared <30 days ago\", \"create_lote/create_sublote persist relationships\", \"mark_lote_compartido marks all its sublotes\"]}\n```"
     },
     {
       "id": 1,
       "subject": "Task 2: Maps_URL coordinate parsing (routes_geocoding.py)",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** Extract lat/lng directly from a Google Maps URL when present.\n\n**Files:**\n- Create: routes_geocoding.py\n- Test: tests/test_routes_geocoding_parse.py\n\n**Verify:** pytest tests/test_routes_geocoding_parse.py -v\n\n```json:metadata\n{\"files\": [\"routes_geocoding.py\", \"tests/test_routes_geocoding_parse.py\"], \"verifyCommand\": \"pytest tests/test_routes_geocoding_parse.py -v\", \"acceptanceCriteria\": [\"Parses @lat,lng from standard Maps URL\", \"Returns None when no coord segment\", \"Returns None for empty/missing input\", \"Handles positive and negative coordinates\"]}\n```"
     },
     {
       "id": 2,
       "subject": "Task 3: Nominatim geocoding + fallback chain (routes_geocoding.py)",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [1],
       "description": "**Goal:** Rate-limited Nominatim geocoding with retries, plus the full per-lead fallback chain and a free-text geocoder for origins.\n\n**Files:**\n- Modify: routes_geocoding.py\n- Modify: requirements.txt\n- Test: tests/test_routes_geocoding_chain.py\n\n**Verify:** pytest tests/test_routes_geocoding_chain.py -v\n\n```json:metadata\n{\"files\": [\"routes_geocoding.py\", \"requirements.txt\", \"tests/test_routes_geocoding_chain.py\"], \"verifyCommand\": \"pytest tests/test_routes_geocoding_chain.py -v\", \"acceptanceCriteria\": [\"nominatim_geocode respects rate limit and retries\", \"geocode_lead follows fallback chain URL->direccion->negocio->fallido\", \"geocode_free_text works for manual origin text\", \"no real network calls in tests\"]}\n```"
     },
     {
       "id": 3,
       "subject": "Task 4: Route ordering algorithm (routes_algorithm.py)",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** Pure functions: haversine distance, N-nearest selection, nearest-neighbor ordering, sub-lote chunking.\n\n**Files:**\n- Create: routes_algorithm.py\n- Test: tests/test_routes_algorithm_ordering.py\n\n**Verify:** pytest tests/test_routes_algorithm_ordering.py -v\n\n```json:metadata\n{\"files\": [\"routes_algorithm.py\", \"tests/test_routes_algorithm_ordering.py\"], \"verifyCommand\": \"pytest tests/test_routes_algorithm_ordering.py -v\", \"acceptanceCriteria\": [\"haversine_meters correct\", \"select_n_nearest sorted and capped\", \"order_nearest_neighbor correct\", \"chunk_into_sublotes preserves order, max 9\"]}\n```"
     },
     {
       "id": 4,
       "subject": "Task 5: Google Maps link builder (routes_algorithm.py)",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [3],
       "description": "**Goal:** Generate a valid Google Maps directions URL (origin + up to 8 waypoints + destination).\n\n**Files:**\n- Modify: routes_algorithm.py\n- Test: tests/test_routes_algorithm_maps_link.py\n\n**Verify:** pytest tests/test_routes_algorithm_maps_link.py -v\n\n```json:metadata\n{\"files\": [\"routes_algorithm.py\", \"tests/test_routes_algorithm_maps_link.py\"], \"verifyCommand\": \"pytest tests/test_routes_algorithm_maps_link.py -v\", \"acceptanceCriteria\": [\"single stop has no waypoints\", \"multi stop has correct waypoints/destination\", \"raises ValueError on invalid stop counts\"]}\n```"
     },
     {
       "id": 5,
       "subject": "Task 6: Sheet sync (routes_sheet_sync.py)",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [0, 2],
       "description": "**Goal:** Read all 3 Sheet tabs, upsert into leads_cache deduplicated by Place_ID (or synthetic key), geocode pending/failed rows.\n\n**Files:**\n- Create: routes_sheet_sync.py\n- Test: tests/test_routes_sheet_sync.py\n\n**Verify:** pytest tests/test_routes_sheet_sync.py -v\n\n```json:metadata\n{\"files\": [\"routes_sheet_sync.py\", \"tests/test_routes_sheet_sync.py\"], \"verifyCommand\": \"pytest tests/test_routes_sheet_sync.py -v\", \"acceptanceCriteria\": [\"reads 3 tabs with correct categoria\", \"dedup by place_id\", \"skips rows without Negocio\", \"synthetic place_id fallback\", \"geocodes pending/failed rows\"]}\n```"
     },
     {
       "id": 6,
       "subject": "Task 7: Batch generation orchestration (routes_batch.py)",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [0, 2, 3, 4],
       "description": "**Goal:** generate_lote() ties together candidate selection, ordering, chunking, and persistence with chained sub-lote origins.\n\n**Files:**\n- Create: routes_batch.py\n- Test: tests/test_routes_batch.py\n\n**Verify:** pytest tests/test_routes_batch.py -v\n\n```json:metadata\n{\"files\": [\"routes_batch.py\", \"tests/test_routes_batch.py\"], \"verifyCommand\": \"pytest tests/test_routes_batch.py -v\", \"acceptanceCriteria\": [\"raises on non-geocodable origin\", \"selects and orders nearest candidates\", \"chains sub-lote origins correctly\", \"persists lote/sublotes/leads\", \"handles smaller-than-n pool\"]}\n```"
     },
     {
       "id": 7,
       "subject": "Task 8: Flask blueprint & UI (routes_app.py)",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [0, 5, 6],
       "description": "**Goal:** Flask Blueprint exposing generation form, results, sync, sharing, historial, and fallidos pages.\n\n**Files:**\n- Create: routes_app.py\n\n**Verify:** Manual — no automated Flask/UI tests per approved design spec. Verified end-to-end in Task 9.\n\n```json:metadata\n{\"files\": [\"routes_app.py\"], \"verifyCommand\": \"\", \"acceptanceCriteria\": [\"home form loads\", \"generar shows sublotes or error\", \"sincronizar handles errors gracefully\", \"compartir routes work\", \"fallidos and historial pages work\"]}\n```"
     },
     {
       "id": 8,
       "subject": "Task 9: Wire into app.py and smoke-test end-to-end",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [7],
       "description": "**Goal:** Register the blueprint on the existing Flask app, init the SQLite db on startup, verify manually.\n\n**Files:**\n- Modify: app.py:14\n\n**Verify:** pytest -v, then manual smoke test per plan Task 9 Step 3\n\n```json:metadata\n{\"files\": [\"app.py\"], \"verifyCommand\": \"pytest -v\", \"acceptanceCriteria\": [\"app starts\", \"/rutas/ loads\", \"existing routes unaffected\", \"full suite passes\"]}\n```"
     }
