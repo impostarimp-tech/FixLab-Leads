@@ -16,9 +16,67 @@ def _conn():
     return db.get_connection(db.DB_PATH)
 
 
+BASE_STYLE = """
+<style>
+  :root {
+    --blue: #0071e3;
+    --blue-dark: #0058b0;
+    --bg: #f5f5f7;
+    --surface: #ffffff;
+    --text: #1d1d1f;
+    --text-muted: #6e6e73;
+    --border: #d2d2d7;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 24px;
+    line-height: 1.5;
+  }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 16px; }
+  h2 { font-size: 16px; font-weight: 600; margin-top: 24px; }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  form, ul {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+    list-style: none;
+  }
+  ul { padding: 8px 16px; }
+  li { padding: 6px 0; border-bottom: 1px solid var(--bg); }
+  li:last-child { border-bottom: none; }
+  label { display: block; margin-bottom: 10px; color: var(--text-muted); font-size: 14px; }
+  input[type="text"], input[type="number"] {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 14px;
+    margin-top: 4px;
+  }
+  button, input[type="submit"] {
+    background: var(--blue);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { background: var(--blue-dark); }
+  button:disabled { background: var(--border); cursor: not-allowed; }
+</style>
+"""
+
 PAGE_HOME = """
 <!doctype html>
 <title>Rutas comerciales</title>
+""" + BASE_STYLE + """
 <h1>Generador de rutas comerciales</h1>
 <form method="post" action="{{ url_for('rutas.generar') }}">
   <label>Origen: <input type="text" name="origen" required></label><br>
@@ -84,6 +142,7 @@ function sincronizar() {
 PAGE_RESULTADO = """
 <!doctype html>
 <title>Lote generado</title>
+""" + BASE_STYLE + """
 <h1>Lote #{{ resultado.lote_id }} — {{ resultado.tamano_real }}/{{ resultado.tamano_solicitado }} direcciones</h1>
 <p><strong>Aviso:</strong> si el vendedor abre el link desde el navegador del celular
    (en vez de la app de Maps instalada), puede que solo se respeten 3 waypoints en vez de 9.
@@ -109,6 +168,7 @@ PAGE_RESULTADO = """
 PAGE_ERROR = """
 <!doctype html>
 <title>Error</title>
+""" + BASE_STYLE + """
 <p>Error: {{ error }}</p>
 <p><a href="{{ url_for('rutas.home') }}">Volver</a></p>
 """
@@ -116,6 +176,7 @@ PAGE_ERROR = """
 PAGE_FALLIDOS = """
 <!doctype html>
 <title>Leads no geocodificables</title>
+""" + BASE_STYLE + """
 <h1>Leads no geocodificables</h1>
 <ul>
 {% for lead in leads %}
@@ -130,6 +191,7 @@ PAGE_FALLIDOS = """
 PAGE_HISTORIAL = """
 <!doctype html>
 <title>Historial de lotes</title>
+""" + BASE_STYLE + """
 <h1>Historial de lotes</h1>
 <ul>
 {% for lote in lotes %}
@@ -147,10 +209,14 @@ PAGE_MAPA = """
 <title>Mapa de rutas</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+""" + BASE_STYLE + """
 <style>
-  #map { height: 600px; width: 100%; }
-  #filtros { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 8px; margin-bottom: 10px; }
-  #filtros label { display: block; font-size: 13px; padding: 2px 0; }
+  #map { height: 600px; width: 100%; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+  #filtros {
+    max-height: 200px; overflow-y: auto; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;
+  }
+  #filtros label { display: block; font-size: 13px; padding: 4px 0; border: none; color: var(--text); }
 </style>
 <h1>Mapa de rutas</h1>
 <p><a href="{{ url_for('rutas.home') }}">Volver</a></p>
