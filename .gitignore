@@ -8,3 +8,4 @@ leads_routes.db
 service_account*.json
 google-credentials*.json
 launch.bat
+run_weekly.bat
