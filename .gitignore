@@ -5,3 +5,6 @@ oauth_credentials.json
 output.log
 leads_routes.db
 .worktrees/
+service_account*.json
+google-credentials*.json
+launch.bat

@@ -1,13 +1,20 @@
 """Flask blueprint for the commercial-routes generator UI."""
 from __future__ import annotations
 
+import csv
+import io
 import json
+import os
+import shutil
+import tempfile
 
 from flask import Blueprint, Response, redirect, render_template_string, request, url_for
 
 import routes_batch as batch
 import routes_db as db
 import routes_sheet_sync as sheet_sync
+
+SQLITE_MAGIC = b"SQLite format 3\x00"
 
 rutas_bp = Blueprint("rutas", __name__, url_prefix="/rutas")
 
@@ -144,13 +151,69 @@ BASE_STYLE = """
   }
   button:hover { background: var(--blue-dark); }
   button:disabled { background: var(--border); cursor: not-allowed; }
+
+  .nav-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .btn-secondary {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600;
+    text-decoration: none; white-space: nowrap;
+  }
+  .btn-secondary:hover { background: var(--bg); text-decoration: none; }
+
+  .table-wrap {
+    max-height: 70vh; overflow: auto; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface);
+  }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 12.5px; }
+  th, td {
+    text-align: left; padding: 5px 10px; border-bottom: 1px solid var(--bg);
+    max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  th {
+    position: sticky; top: 0; background: var(--bg); color: var(--text-muted);
+    font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em;
+    z-index: 1;
+  }
+  tbody tr:nth-child(even) { background: #fafafa; }
+  tbody tr:hover { background: #eaf3ff; }
+  tr:last-child td { border-bottom: none; }
+
+  .cat-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; flex: none; }
+  .cat-Repuestos { background: #0071e3; }
+  .cat-Fundas { background: #f58231; }
+  .cat-Telefonos { background: #3cb44b; }
+
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge-ok { background: #e6f4ea; color: #1e7e34; }
+  .badge-no { background: #fdecea; color: #c0392b; }
+
+  .estado-select {
+    border: none; border-radius: 6px; padding: 3px 6px; font-size: 11.5px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .estado-sin_contactar { background: #f0f0f2; color: #6e6e73; }
+  .estado-contactado { background: #e8f0fe; color: #1a56db; }
+  .estado-respondio { background: #fff4e5; color: #b45309; }
+  .estado-convertido { background: #e6f4ea; color: #1e7e34; }
+  .estado-form { margin: 0; padding: 0; background: none; border: none; }
 </style>
+"""
+
+NAV_LINKS = """
+<div class="nav-row">
+  <a class="btn-secondary" href="{{ url_for('rutas.home') }}">Inicio</a>
+  <a class="btn-secondary" href="{{ url_for('rutas.historial') }}">Historial</a>
+  <a class="btn-secondary" href="{{ url_for('rutas.fallidos') }}">No geocodificables</a>
+  <a class="btn-secondary" href="{{ url_for('rutas.mapa') }}">Mapa</a>
+  <a class="btn-secondary" href="{{ url_for('rutas.crm') }}">CRM</a>
+</div>
 """
 
 PAGE_HOME = """
 <!doctype html>
 <title>Rutas comerciales</title>
-""" + BASE_STYLE + """
+""" + BASE_STYLE + NAV_LINKS + """
 <h1>Generador de rutas comerciales</h1>
 <form method="post" action="{{ url_for('rutas.generar') }}">
   <label>Origen:
@@ -175,6 +238,16 @@ PAGE_HOME = """
     <label>Direccion o nombre del negocio (como figura en el mapa):
       <input type="text" id="origenLibre" name="origen_libre"></label>
   </div>
+  <label>Categoria:
+    <select name="categoria">
+      <option value="">Todas</option>
+      <option value="Repuestos">Repuestos</option>
+      <option value="Fundas">Fundas</option>
+      <option value="Telefonos">Telefonos</option>
+    </select>
+  </label>
+  <label>Reviews minimas (opcional): <input type="number" name="min_reviews" min="0" step="1"></label>
+  <label>Rating minimo (opcional): <input type="number" name="min_rating" min="0" max="5" step="0.1"></label>
   <label>Cantidad de direcciones: <input type="number" name="n" value="40" min="1" required></label><br>
   <button type="submit">Generar lote</button>
 </form>
@@ -193,10 +266,6 @@ function onOrigenSelectChange() {
 <button type="button" id="syncBtn" onclick="sincronizar()">Sincronizar leads desde el Sheet</button>
 <p id="syncProgress"></p>
 <div id="syncLog" style="max-height: 200px; overflow-y: auto; font-size: 13px; color: #555;"></div>
-
-<p><a href="{{ url_for('rutas.historial') }}">Ver historial de lotes</a> |
-   <a href="{{ url_for('rutas.fallidos') }}">Ver leads no geocodificables</a> |
-   <a href="{{ url_for('rutas.mapa') }}">Ver mapa</a></p>
 
 <script>
 function appendSyncLog(msg) {
@@ -248,19 +317,33 @@ function sincronizar() {
 PAGE_RESULTADO = """
 <!doctype html>
 <title>Lote generado</title>
-""" + BASE_STYLE + """
-<h1>Lote #{{ resultado.lote_id }} — {{ resultado.tamano_real }}/{{ resultado.tamano_solicitado }} direcciones</h1>
+""" + BASE_STYLE + NAV_LINKS + """
+<h1>Lote #{{ resultado.lote_id }}{% if resultado.categoria %} — {{ resultado.categoria }}{% endif %}
+   — {{ resultado.tamano_real }}/{{ resultado.tamano_solicitado }} direcciones</h1>
 <p><strong>Aviso:</strong> si el vendedor abre el link desde el navegador del celular
    (en vez de la app de Maps instalada), puede que solo se respeten 3 waypoints en vez de 9.
    Recomendale abrir con la app instalada.</p>
 {% for sublote in resultado.sublotes %}
-  <h2>Sub-lote {{ sublote.orden }} ({{ sublote.leads|length }} paradas)</h2>
+  <h2>Sub-lote {{ sublote.orden }} ({{ sublote.leads|length }} paradas)
+    {% if sublote.compartido_en %}<span class="badge badge-ok">Compartido</span>{% endif %}
+  </h2>
   <p><a href="{{ sublote.maps_link }}" target="_blank">{{ sublote.maps_link }}</a></p>
-  <ul>
+  <div class="table-wrap" style="max-height: 260px;">
+  <table>
+    <thead><tr><th>Negocio</th><th>Categoria</th><th>Direccion</th></tr></thead>
+    <tbody>
     {% for lead in sublote.leads %}
-      <li>{{ lead.negocio }} — {{ lead.direccion }}</li>
+      <tr>
+        <td title="{{ lead.negocio }}">{{ lead.negocio }}</td>
+        <td>
+          {% for cat in lead.categorias %}<span class="cat-dot cat-{{ cat }}"></span>{{ cat }}{% if not loop.last %}, {% endif %}{% endfor %}
+        </td>
+        <td title="{{ lead.direccion or '' }}">{{ lead.direccion or "-" }}</td>
+      </tr>
     {% endfor %}
-  </ul>
+    </tbody>
+  </table>
+  </div>
   <form method="post" action="{{ url_for('rutas.compartir_sublote', sublote_id=sublote.id) }}">
     <button type="submit">Marcar este sub-lote como compartido</button>
   </form>
@@ -268,46 +351,65 @@ PAGE_RESULTADO = """
 <form method="post" action="{{ url_for('rutas.compartir_lote', lote_id=resultado.lote_id) }}">
   <button type="submit">Marcar todo el lote como compartido</button>
 </form>
-<p><a href="{{ url_for('rutas.home') }}">Volver</a></p>
 """
 
 PAGE_ERROR = """
 <!doctype html>
 <title>Error</title>
-""" + BASE_STYLE + """
+""" + BASE_STYLE + NAV_LINKS + """
 <p>Error: {{ error }}</p>
-<p><a href="{{ url_for('rutas.home') }}">Volver</a></p>
 """
 
 PAGE_FALLIDOS = """
 <!doctype html>
 <title>Leads no geocodificables</title>
-""" + BASE_STYLE + """
+""" + BASE_STYLE + NAV_LINKS + """
 <h1>Leads no geocodificables</h1>
-<ul>
-{% for lead in leads %}
-  <li>[{{ lead.categoria }}] {{ lead.negocio }} — {{ lead.direccion }}</li>
-{% else %}
-  <li>Ninguno por ahora.</li>
-{% endfor %}
-</ul>
-<p><a href="{{ url_for('rutas.home') }}">Volver</a></p>
+<p class="crm-summary">{{ leads|length }} lead{{ "s" if leads|length != 1 else "" }} sin geocodificar.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Categoria</th><th>Negocio</th><th>Direccion</th></tr></thead>
+  <tbody>
+  {% for lead in leads %}
+    <tr>
+      <td><span class="cat-dot cat-{{ lead.categoria }}"></span>{{ lead.categoria }}</td>
+      <td title="{{ lead.negocio }}">{{ lead.negocio }}</td>
+      <td title="{{ lead.direccion or '' }}">{{ lead.direccion or "-" }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="3">Ninguno por ahora.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
 """
 
 PAGE_HISTORIAL = """
 <!doctype html>
 <title>Historial de lotes</title>
-""" + BASE_STYLE + """
+""" + BASE_STYLE + NAV_LINKS + """
 <h1>Historial de lotes</h1>
-<ul>
-{% for lote in lotes %}
-  <li>Lote #{{ lote.id }} — {{ lote.fecha_generado }} — origen: {{ lote.origen_texto }}
-      — {{ lote.tamano_real }}/{{ lote.tamano_solicitado }} direcciones</li>
-{% else %}
-  <li>Todavia no generaste ningun lote.</li>
-{% endfor %}
-</ul>
-<p><a href="{{ url_for('rutas.home') }}">Volver</a></p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Lote</th><th>Fecha</th><th>Origen</th><th>Categoria</th><th>Direcciones</th><th>Acciones</th></tr></thead>
+  <tbody>
+  {% for lote in lotes %}
+    <tr>
+      <td>#{{ lote.id }}</td>
+      <td>{{ lote.fecha_generado }}</td>
+      <td title="{{ lote.origen_texto }}">{{ lote.origen_texto }}</td>
+      <td>
+        {% if lote.categoria %}<span class="cat-dot cat-{{ lote.categoria }}"></span>{{ lote.categoria }}{% else %}Todas{% endif %}
+      </td>
+      <td>{{ lote.tamano_real }}/{{ lote.tamano_solicitado }}</td>
+      <td><a class="btn-secondary" href="{{ url_for('rutas.detalle_lote', lote_id=lote.id) }}">Ver rutas</a></td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6">Todavia no generaste ningun lote.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
 """
 
 PAGE_MAPA = """
@@ -315,9 +417,10 @@ PAGE_MAPA = """
 <title>Mapa de rutas</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-""" + BASE_STYLE + """
+""" + BASE_STYLE + NAV_LINKS + """
 <style>
-  #map { height: 600px; width: 100%; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+  .map-layout { display: flex; gap: 16px; align-items: flex-start; }
+  #map { height: 600px; flex: 1; min-width: 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
   #filtros {
     max-height: 200px; overflow-y: auto; background: var(--surface);
     border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;
@@ -328,10 +431,20 @@ PAGE_MAPA = """
   .cat-tab { flex: 1; padding: 8px; border: none; border-radius: 7px; font-size: 13px; font-weight: 600;
              cursor: pointer; background: transparent; color: var(--text-muted); }
   .cat-tab.active { background: var(--blue); color: white; }
-  .cat-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+  #panel {
+    width: 280px; flex: none; height: 600px; overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px;
+    font-size: 13px;
+  }
+  #panel h3 { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
+  #panel .panel-row { margin-bottom: 10px; }
+  #panel .panel-label {
+    display: block; color: var(--text-muted); font-weight: 600; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 2px;
+  }
+  #panel .panel-placeholder { color: var(--text-muted); }
 </style>
 <h1>Mapa de rutas</h1>
-<p><a href="{{ url_for('rutas.home') }}">Volver</a></p>
 
 <div class="cat-tabs">
   <button type="button" class="cat-tab active" data-cat="Todos" onclick="onCatTabClick(this)">Todos</button>
@@ -355,7 +468,10 @@ PAGE_MAPA = """
   {% endfor %}
 </div>
 
-<div id="map"></div>
+<div class="map-layout">
+  <div id="map"></div>
+  <div id="panel"><p class="panel-placeholder">Selecciona un negocio en el mapa para ver el detalle.</p></div>
+</div>
 
 <script>
   const allLeads = {{ all_leads | tojson }};
@@ -373,13 +489,69 @@ PAGE_MAPA = """
   const categoryLayers = {};
   Object.keys(categoryColors).forEach(function(cat) { categoryLayers[cat] = L.layerGroup(); });
 
+  const estadoLabels = {sin_contactar: "Sin contactar", contactado: "Contactado",
+                         respondio: "Respondió", convertido: "Convertido"};
+
+  function escapeHtml(s) {
+    if (!s) return "";
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c];
+    });
+  }
+
+  function panelRow(label, value) {
+    if (!value) return "";
+    return '<div class="panel-row"><span class="panel-label">' + label + '</span>' + escapeHtml(value) + '</div>';
+  }
+
+  function estadoSelectHtml(lead) {
+    var options = Object.keys(estadoLabels).map(function(value) {
+      var selected = value === lead.outreach_status ? " selected" : "";
+      return '<option value="' + value + '"' + selected + '>' + estadoLabels[value] + '</option>';
+    }).join("");
+    return '<div class="panel-row"><span class="panel-label">Estado</span>' +
+      '<form class="estado-form"><select class="estado-select estado-' + lead.outreach_status + '">' +
+      options + '</select></form></div>';
+  }
+
+  function renderPanel(lead, prefix) {
+    var panel = document.getElementById('panel');
+    var ratingText = (lead.rating != null && lead.reviews_count != null)
+      ? lead.rating + " (" + lead.reviews_count + " reviews)"
+      : (lead.rating != null ? String(lead.rating) : (lead.reviews_count != null ? lead.reviews_count + " reviews" : ""));
+    var categoriaText = lead.categorias ? lead.categorias.join(", ") : lead.categoria;
+    var leadIds = lead.lead_ids || (lead.id ? [lead.id] : []);
+    panel.innerHTML =
+      "<h3>" + (prefix || "") + escapeHtml(lead.negocio) + "</h3>" +
+      panelRow("Categoria", categoriaText) +
+      panelRow("Direccion", lead.direccion) +
+      panelRow("Telefono", lead.telefono) +
+      panelRow("Rating", ratingText) +
+      (leadIds.length ? estadoSelectHtml(lead) : "");
+
+    var select = panel.querySelector(".estado-select");
+    if (select) {
+      select.addEventListener('change', function() {
+        var nuevoEstado = select.value;
+        select.className = 'estado-select estado-' + nuevoEstado;
+        Promise.all(leadIds.map(function(leadId) {
+          return fetch('/rutas/crm/' + leadId + '/estado', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'estado=' + encodeURIComponent(nuevoEstado)
+          });
+        })).then(function() { lead.outreach_status = nuevoEstado; });
+      });
+    }
+  }
+
   allLeads.forEach(function(lead) {
     const layer = categoryLayers[lead.categoria];
     if (!layer) return;
     const color = categoryColors[lead.categoria];
     L.circleMarker([lead.lat, lead.lng], {
       radius: 4, color: color, fillColor: color, fillOpacity: 0.6, weight: 1
-    }).bindPopup(lead.negocio + " (" + lead.categoria + ")").addTo(layer);
+    }).on('click', function() { renderPanel(lead); }).addTo(layer);
   });
 
   function showCategory(cat) {
@@ -421,7 +593,7 @@ PAGE_MAPA = """
         points.forEach(function(p, i) {
           L.circleMarker([p.lat, p.lng], {
             radius: 6, color: color, fillColor: color, fillOpacity: 0.9, weight: 2
-          }).bindPopup((i === 0 ? "Origen — " : (i + ". ")) + p.negocio).addTo(layerGroup);
+          }).on('click', function() { renderPanel(p, i === 0 ? "Origen — " : (i + ". ")); }).addTo(layerGroup);
         });
         loteLayers[loteId] = layerGroup;
       } else if (loteLayers[loteId]) {
@@ -431,6 +603,119 @@ PAGE_MAPA = """
     });
   });
 </script>
+"""
+
+
+OUTREACH_STATUS_LABELS = {
+    "sin_contactar": "Sin contactar",
+    "contactado": "Contactado",
+    "respondio": "Respondió",
+    "convertido": "Convertido",
+}
+
+PAGE_CRM = """
+<!doctype html>
+<title>CRM de leads</title>
+""" + BASE_STYLE + NAV_LINKS + """
+<style>
+  .crm-toolbar {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 12px;
+  }
+  .filtros-form { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 0; }
+  .filtros-form label { margin-bottom: 0; }
+  .crm-summary { color: var(--text-muted); font-size: 13px; margin: 0 0 10px; }
+  .pager { display: flex; justify-content: space-between; margin-top: 12px; font-size: 13px; }
+</style>
+<h1>CRM de leads</h1>
+
+<div class="crm-toolbar">
+  <form method="get" class="filtros-form">
+    <label>Categoria:
+      <select name="categoria">
+        <option value="">Todas</option>
+        {% for cat in ["Repuestos", "Fundas", "Telefonos"] %}
+          <option value="{{ cat }}" {% if categoria == cat %}selected{% endif %}>{{ cat }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Estado:
+      <select name="estado">
+        <option value="">Todos</option>
+        {% for value, label in status_labels.items() %}
+          <option value="{{ value }}" {% if estado == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Reviews minimas:
+      <input type="number" name="min_reviews" min="0" step="1" value="{{ min_reviews or '' }}" style="width:80px;">
+    </label>
+    <label>Rating minimo:
+      <input type="number" name="min_rating" min="0" max="5" step="0.1" value="{{ min_rating or '' }}" style="width:80px;">
+    </label>
+    <button type="submit">Filtrar</button>
+  </form>
+  <a class="btn-secondary" href="{{ url_for('rutas.exportar_crm_csv', categoria=categoria, estado=estado, min_reviews=min_reviews, min_rating=min_rating) }}">
+    Exportar CSV
+  </a>
+</div>
+
+<p class="crm-summary">{{ total }} lead{{ "s" if total != 1 else "" }} — pagina {{ page }} de {{ total_pages }}</p>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Categoria</th><th>Negocio</th><th>Telefono</th><th>Direccion</th>
+      <th>Reviews</th><th>Rating</th><th>Geo</th><th>Estado</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for lead in leads %}
+    <tr>
+      <td><span class="cat-dot cat-{{ lead.categoria }}"></span>{{ lead.categoria }}</td>
+      <td title="{{ lead.negocio }}">{{ lead.negocio }}</td>
+      <td>{{ lead.telefono or "-" }}</td>
+      <td title="{{ lead.direccion or '' }}">{{ lead.direccion or "-" }}</td>
+      <td>{{ lead.reviews_count if lead.reviews_count is not none else "-" }}</td>
+      <td>{{ lead.rating if lead.rating is not none else "-" }}</td>
+      <td>
+        {% if lead.lat %}
+          <span class="badge badge-ok">Si</span>
+        {% else %}
+          <span class="badge badge-no">No</span>
+        {% endif %}
+      </td>
+      <td>
+        <form method="post" class="estado-form" action="{{ url_for('rutas.actualizar_estado', lead_id=lead.id) }}">
+          <select name="estado" class="estado-select estado-{{ lead.outreach_status }}"
+                  onchange="this.className = 'estado-select estado-' + this.value; this.form.submit();">
+            {% for value, label in status_labels.items() %}
+              <option value="{{ value }}" {% if lead.outreach_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8">No hay leads para este filtro.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<div class="pager">
+  <span>
+    {% if page > 1 %}
+      <a href="{{ url_for('rutas.crm', categoria=categoria, estado=estado, min_reviews=min_reviews, min_rating=min_rating, page=page-1) }}">&laquo; Anterior</a>
+    {% endif %}
+  </span>
+  <span>
+    {% if page < total_pages %}
+      <a href="{{ url_for('rutas.crm', categoria=categoria, estado=estado, min_reviews=min_reviews, min_rating=min_rating, page=page+1) }}">Siguiente &raquo;</a>
+    {% endif %}
+  </span>
+</div>
 """
 
 
@@ -462,7 +747,13 @@ def generar():
         origen_select = request.form["origen_select"]
         origen_texto, origen_coords = _resolve_origen(origen_select, request.form.get("origen_libre", ""))
         n = int(request.form["n"])
-        resultado = batch.generate_lote(conn, origen_texto, n, origen_coords=origen_coords)
+        categoria = request.form.get("categoria", "").strip() or None
+        min_reviews = request.form.get("min_reviews", type=int)
+        min_rating = request.form.get("min_rating", type=float)
+        resultado = batch.generate_lote(
+            conn, origen_texto, n, origen_coords=origen_coords, categoria=categoria,
+            min_reviews=min_reviews, min_rating=min_rating,
+        )
     except (KeyError, ValueError) as exc:
         return render_template_string(PAGE_ERROR, error=str(exc)), 400
     finally:
@@ -493,7 +784,7 @@ def compartir_sublote(sublote_id: int):
         db.mark_sublote_compartido(conn, sublote_id)
     finally:
         conn.close()
-    return redirect(url_for("rutas.historial"))
+    return redirect(request.referrer or url_for("rutas.historial"))
 
 
 @rutas_bp.route("/lotes/<int:lote_id>/compartir", methods=["POST"])
@@ -503,7 +794,36 @@ def compartir_lote(lote_id: int):
         db.mark_lote_compartido(conn, lote_id)
     finally:
         conn.close()
-    return redirect(url_for("rutas.historial"))
+    return redirect(request.referrer or url_for("rutas.historial"))
+
+
+@rutas_bp.route("/lotes/<int:lote_id>", methods=["GET"])
+def detalle_lote(lote_id: int):
+    conn = _conn()
+    try:
+        lote = db.get_lote(conn, lote_id)
+        if lote is None:
+            return render_template_string(PAGE_ERROR, error=f"Lote #{lote_id} no encontrado"), 404
+        sublotes = []
+        for sublote in db.get_sublotes_for_lote(conn, lote_id):
+            sublotes.append({
+                "id": sublote["id"],
+                "orden": sublote["orden"],
+                "maps_link": sublote["maps_link"],
+                "compartido_en": sublote["compartido_en"],
+                "leads": db.get_sublote_stops(conn, sublote["id"]),
+            })
+    finally:
+        conn.close()
+    resultado = {
+        "lote_id": lote["id"],
+        "origen_texto": lote["origen_texto"],
+        "categoria": lote["categoria"],
+        "tamano_solicitado": lote["tamano_solicitado"],
+        "tamano_real": lote["tamano_real"],
+        "sublotes": sublotes,
+    }
+    return render_template_string(PAGE_RESULTADO, resultado=resultado)
 
 
 @rutas_bp.route("/fallidos", methods=["GET"])
@@ -536,3 +856,118 @@ def mapa():
     finally:
         conn.close()
     return render_template_string(PAGE_MAPA, all_leads=all_leads, lotes=lotes, lote_points=lote_points)
+
+
+@rutas_bp.route("/crm", methods=["GET"])
+def crm():
+    categoria = request.args.get("categoria", "").strip()
+    estado = request.args.get("estado", "").strip()
+    min_reviews = request.args.get("min_reviews", type=int)
+    min_rating = request.args.get("min_rating", type=float)
+    page = max(1, request.args.get("page", 1, type=int))
+    conn = _conn()
+    try:
+        leads = db.get_crm_leads(
+            conn, categoria=categoria or None, outreach_status=estado or None,
+            min_reviews=min_reviews, min_rating=min_rating, page=page,
+        )
+        total = db.count_crm_leads(
+            conn, categoria=categoria or None, outreach_status=estado or None,
+            min_reviews=min_reviews, min_rating=min_rating,
+        )
+    finally:
+        conn.close()
+    total_pages = max(1, -(-total // db.CRM_PAGE_SIZE))  # ceil division
+    return render_template_string(
+        PAGE_CRM,
+        leads=leads,
+        categoria=categoria,
+        estado=estado,
+        min_reviews=min_reviews,
+        min_rating=min_rating,
+        status_labels=OUTREACH_STATUS_LABELS,
+        page=page,
+        total_pages=total_pages,
+        total=total,
+    )
+
+
+@rutas_bp.route("/crm/exportar", methods=["GET"])
+def exportar_crm_csv():
+    categoria = request.args.get("categoria", "").strip()
+    estado = request.args.get("estado", "").strip()
+    min_reviews = request.args.get("min_reviews", type=int)
+    min_rating = request.args.get("min_rating", type=float)
+    conn = _conn()
+    try:
+        leads = db.get_crm_leads_all(
+            conn, categoria=categoria or None, outreach_status=estado or None,
+            min_reviews=min_reviews, min_rating=min_rating,
+        )
+    finally:
+        conn.close()
+
+    output = io.StringIO()
+    output.write("﻿")  # BOM so Excel/Sheets detect UTF-8 on import
+    writer = csv.writer(output)
+    writer.writerow([
+        "Categoria", "Negocio", "Telefono", "Direccion", "Reviews", "Rating",
+        "Geocodificado", "Estado de contacto",
+    ])
+    for lead in leads:
+        writer.writerow([
+            lead["categoria"],
+            lead["negocio"],
+            lead["telefono"] or "",
+            lead["direccion"] or "",
+            lead["reviews_count"] if lead["reviews_count"] is not None else "",
+            lead["rating"] if lead["rating"] is not None else "",
+            "Si" if lead["lat"] is not None else "No",
+            OUTREACH_STATUS_LABELS.get(lead["outreach_status"], lead["outreach_status"]),
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=crm_leads.csv"},
+    )
+
+
+@rutas_bp.route("/crm/<int:lead_id>/estado", methods=["POST"])
+def actualizar_estado(lead_id: int):
+    estado = request.form.get("estado", "")
+    if estado not in db.OUTREACH_STATUSES:
+        return render_template_string(PAGE_ERROR, error=f"Estado invalido: {estado}"), 400
+    conn = _conn()
+    try:
+        db.set_outreach_status(conn, lead_id, estado)
+    finally:
+        conn.close()
+    return redirect(request.referrer or url_for("rutas.crm"))
+
+
+@rutas_bp.route("/admin/restore-db", methods=["POST"])
+def admin_restore_db():
+    """One-time-use: uploads a local leads_routes.db onto this deployment's
+    persistent volume. Guarded by ADMIN_RESTORE_TOKEN -- unset that env var
+    (or remove this route) once the initial data migration is done."""
+    expected_token = os.environ.get("ADMIN_RESTORE_TOKEN", "")
+    if not expected_token or request.form.get("token", "") != expected_token:
+        return "No autorizado.", 403
+
+    uploaded = request.files.get("db_file")
+    if not uploaded:
+        return "Falta el archivo db_file.", 400
+
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        uploaded.save(tmp.name)
+        tmp_path = tmp.name
+
+    with open(tmp_path, "rb") as f:
+        header = f.read(len(SQLITE_MAGIC))
+    if header != SQLITE_MAGIC:
+        os.remove(tmp_path)
+        return "El archivo no es una base SQLite valida.", 400
+
+    shutil.move(tmp_path, db.DB_PATH)
+    return "Base restaurada correctamente.", 200

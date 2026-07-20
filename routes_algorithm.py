@@ -19,34 +19,119 @@ def haversine_meters(lat1: float, lng1: float, lat2: float, lng2: float) -> floa
     return 2 * EARTH_RADIUS_METERS * math.asin(math.sqrt(a))
 
 
-def select_n_nearest(origin: tuple[float, float], candidates: list[dict], n: int) -> list[dict]:
-    """Returns up to n candidates closest to origin, sorted by distance ascending.
-    Each candidate dict must have 'lat' and 'lng' keys."""
-    origin_lat, origin_lng = origin
-    scored = sorted(
-        candidates,
-        key=lambda c: haversine_meters(origin_lat, origin_lng, c["lat"], c["lng"]),
-    )
-    return scored[:n]
+def build_route_cheapest_insertion(
+    origin: tuple[float, float], candidates: list[dict], n: int
+) -> list[dict]:
+    """Builds an up-to-n-stop open route starting at origin (it does not return
+    to origin) using cheapest insertion: at every step, scans every remaining
+    candidate against every possible insertion position in the route built so
+    far, and inserts whichever (candidate, position) pair adds the least extra
+    distance. Unlike picking "the n nearest to origin" and only then ordering
+    them, this scans the *entire* candidate pool at each step, so a tight,
+    efficient cluster just past the n-th-closest-to-origin point is never
+    skipped the way a radius-based cutoff would skip it."""
+    remaining = list(candidates)
+    route: list[dict] = []
+
+    while remaining and len(route) < n:
+        best_candidate = None
+        best_position = None
+        best_cost = None
+
+        for candidate in remaining:
+            for position in range(len(route) + 1):
+                before_lat, before_lng = origin if position == 0 else (
+                    route[position - 1]["lat"], route[position - 1]["lng"]
+                )
+                cost = haversine_meters(before_lat, before_lng, candidate["lat"], candidate["lng"])
+                if position < len(route):
+                    after = route[position]
+                    cost += haversine_meters(candidate["lat"], candidate["lng"], after["lat"], after["lng"])
+                    cost -= haversine_meters(before_lat, before_lng, after["lat"], after["lng"])
+
+                if best_cost is None or cost < best_cost:
+                    best_cost = cost
+                    best_candidate = candidate
+                    best_position = position
+
+        route.insert(best_position, best_candidate)
+        remaining.remove(best_candidate)
+
+    return route
 
 
-def order_nearest_neighbor(origin: tuple[float, float], points: list[dict]) -> list[dict]:
-    """Orders points into a route starting at origin: repeatedly visits the closest
-    unvisited point. Does not include the origin itself in the result."""
-    remaining = list(points)
-    ordered: list[dict] = []
+def _build_route_nearest_neighbor(
+    origin: tuple[float, float], candidates: list[dict], n: int
+) -> list[dict]:
+    """Greedy construction: repeatedly appends whichever remaining candidate is
+    nearest to the last stop added (starting from origin), stopping at n. Used
+    as the other half of a multi-start comparison against cheapest insertion —
+    see build_route."""
+    remaining = list(candidates)
+    route: list[dict] = []
     current_lat, current_lng = origin
 
-    while remaining:
+    while remaining and len(route) < n:
         nearest = min(
             remaining,
             key=lambda p: haversine_meters(current_lat, current_lng, p["lat"], p["lng"]),
         )
-        ordered.append(nearest)
+        route.append(nearest)
         remaining.remove(nearest)
         current_lat, current_lng = nearest["lat"], nearest["lng"]
 
-    return ordered
+    return route
+
+
+def _route_length(origin: tuple[float, float], points: list[dict]) -> float:
+    total = 0.0
+    lat, lng = origin
+    for p in points:
+        total += haversine_meters(lat, lng, p["lat"], p["lng"])
+        lat, lng = p["lat"], p["lng"]
+    return total
+
+
+def two_opt(origin: tuple[float, float], ordered_points: list[dict]) -> list[dict]:
+    """Removes crossing edges from an already-ordered route via the standard
+    2-opt local search: repeatedly reverses a sub-segment when doing so
+    shortens the total route length, until no such improvement remains.
+    Nearest-neighbor construction is greedy and can strand points, forcing a
+    long backtrack later that shows up as crossed lines on the map — 2-opt
+    fixes exactly that, and for points that happen to lie on a line it
+    converges on the straightforward end-to-end sweep."""
+    route = list(ordered_points)
+    improved = True
+    while improved:
+        improved = False
+        current_length = _route_length(origin, route)
+        for i in range(len(route) - 1):
+            for j in range(i + 1, len(route)):
+                candidate = route[:i] + route[i : j + 1][::-1] + route[j + 1 :]
+                candidate_length = _route_length(origin, candidate)
+                if candidate_length < current_length - 1e-9:
+                    route = candidate
+                    current_length = candidate_length
+                    improved = True
+    return route
+
+
+def build_route(origin: tuple[float, float], candidates: list[dict], n: int) -> list[dict]:
+    """Builds the final up-to-n-stop route: constructs a tour both ways
+    (nearest-neighbor and cheapest insertion), refines each independently with
+    2-opt, and returns whichever ends up shorter. Cheapest insertion is usually
+    the better starting point since — unlike nearest-neighbor — it isn't
+    anchored to a fixed n-nearest-to-origin cutoff. But 2-opt is a local
+    search: it can get stuck at a worse local optimum starting from one
+    construction than from the other, depending on the specific point layout,
+    so neither construction reliably dominates on every instance. Running
+    both and keeping the best is cheap insurance (nearest-neighbor
+    construction is near-instant) against relying on a single heuristic."""
+    nn_route = two_opt(origin, _build_route_nearest_neighbor(origin, candidates, n))
+    ci_route = two_opt(origin, build_route_cheapest_insertion(origin, candidates, n))
+    if _route_length(origin, nn_route) <= _route_length(origin, ci_route):
+        return nn_route
+    return ci_route
 
 
 def chunk_into_sublotes(ordered_points: list[dict], max_size: int = MAX_STOPS_PER_SUBLOTE) -> list[list[dict]]:

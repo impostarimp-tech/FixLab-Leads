@@ -1,5 +1,35 @@
 [
   {
+    "fecha": "14/07/2026 16:18",
+    "zona": "Quilmes, Buenos Aires, Argentina",
+    "bruto": 26,
+    "nuevos": 0,
+    "costo_real": 0.166,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
+    "fecha": "14/07/2026 14:43",
+    "zona": "Ciudad de Santa Fe",
+    "bruto": 28,
+    "nuevos": 28,
+    "costo_real": 0.26,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "telefonos"
+  },
+  {
+    "fecha": "14/07/2026 12:59",
+    "zona": "Quilmes, Buenos Aires, Argentina",
+    "bruto": 26,
+    "nuevos": 24,
+    "costo_real": 0.164,
+    "test": false,
+    "fuente": "Maps",
+    "categoria": "fundas"
+  },
+  {
     "fecha": "07/07/2026 01:02",
     "zona": "Lomas de Zamora, Buenos Aires, Argentina",
     "bruto": 29,
@@ -465,36 +495,6 @@
     "bruto": 90,
     "nuevos": 9,
     "costo_real": 0.596,
-    "test": false,
-    "fuente": "Maps",
-    "categoria": "repuestos"
-  },
-  {
-    "fecha": "22/06/2026 12:26",
-    "zona": "Balvanera, Buenos Aires, Argentina",
-    "bruto": 87,
-    "nuevos": 58,
-    "costo_real": 0.596,
-    "test": false,
-    "fuente": "Maps",
-    "categoria": "repuestos"
-  },
-  {
-    "fecha": "22/06/2026 12:10",
-    "zona": "Colegiales, Buenos Aires, Argentina",
-    "bruto": 113,
-    "nuevos": 5,
-    "costo_real": 0.72,
-    "test": false,
-    "fuente": "Maps",
-    "categoria": "repuestos"
-  },
-  {
-    "fecha": "22/06/2026 12:05",
-    "zona": "Colegiales, Buenos Aires, Argentina",
-    "bruto": 128,
-    "nuevos": 58,
-    "costo_real": 0.72,
     "test": false,
     "fuente": "Maps",
     "categoria": "repuestos"
