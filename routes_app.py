@@ -440,7 +440,7 @@ PAGE_FALLIDOS = """
 """ + BASE_STYLE + NAV_LINKS + """
 <h1>Leads no geocodificables</h1>
 <p class="crm-summary">{{ leads|length }} lead{{ "s" if leads|length != 1 else "" }} sin geocodificar.</p>
-<div class="table-wrap">
+<div class="table-wrap desktop-only">
 <table>
   <thead><tr><th>Categoria</th><th>Negocio</th><th>Direccion</th></tr></thead>
   <tbody>
@@ -456,6 +456,19 @@ PAGE_FALLIDOS = """
   </tbody>
 </table>
 </div>
+<div class="mobile-only">
+  {% for lead in leads %}
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+      <strong>{{ lead.negocio }}</strong>
+      <span class="cat-dot cat-{{ lead.categoria }}"></span>
+    </div>
+    <div style="font-size:12px; color:var(--text-muted);">{{ lead.direccion or "-" }}</div>
+  </div>
+  {% else %}
+  <p style="text-align:center; color:var(--text-muted); padding:20px;">Ninguno por ahora.</p>
+  {% endfor %}
+</div>
 """
 
 PAGE_HISTORIAL = """
@@ -464,7 +477,7 @@ PAGE_HISTORIAL = """
 <title>Historial de lotes</title>
 """ + BASE_STYLE + NAV_LINKS + """
 <h1>Historial de lotes</h1>
-<div class="table-wrap">
+<div class="table-wrap desktop-only">
 <table>
   <thead><tr><th>Lote</th><th>Fecha</th><th>Origen</th><th>Categoria</th><th>Direcciones</th><th>Acciones</th></tr></thead>
   <tbody>
@@ -484,6 +497,24 @@ PAGE_HISTORIAL = """
   {% endfor %}
   </tbody>
 </table>
+</div>
+<div class="mobile-only">
+  {% for lote in lotes %}
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+      <strong>Lote #{{ lote.id }}</strong>
+      {% if lote.categoria %}<span class="cat-dot cat-{{ lote.categoria }}"></span>{{ lote.categoria }}{% else %}<span style="font-size:11px;color:var(--text-muted)">Todas</span>{% endif %}
+    </div>
+    <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">
+      {{ lote.fecha_generado }}<br>
+      {{ lote.origen_texto }}<br>
+      {{ lote.tamano_real }}/{{ lote.tamano_solicitado }} direcciones
+    </div>
+    <a class="btn-secondary" href="{{ url_for('rutas.detalle_lote', lote_id=lote.id) }}">Ver rutas</a>
+  </div>
+  {% else %}
+  <p style="text-align:center; color:var(--text-muted); padding:20px;">Todavia no generaste ningun lote.</p>
+  {% endfor %}
 </div>
 """
 
