@@ -463,7 +463,7 @@ HTML = """
   <!-- HISTORIAL -->
   <div class="card">
     <h2>Historial de corridas</h2>
-    <div class="hist-table-wrap">
+    <div class="hist-table-wrap desktop-only">
       <table class="hist-table" id="histTable">
         <thead>
           <tr>
@@ -481,13 +481,16 @@ HTML = """
         </tbody>
       </table>
     </div>
+    <div class="mobile-only" id="histCards">
+      <p class="hist-empty">Sin corridas todavia. Ejecuta una busqueda para ver el historial.</p>
+    </div>
   </div>
 
   <!-- COBERTURA DE ZONAS -->
   <div class="card">
     <h2>Cobertura de zonas</h2>
     <p style="font-size:12px;color:#888;margin-bottom:14px;">Zonas que ya fueron scrapeadas en la categoria activa. ✓ = al menos una corrida real.</p>
-    <div id="coberturaWrap">
+    <div id="coberturaWrap" class="desktop-only">
       <table class="zona-cobertura-table">
         <thead>
           <tr>
@@ -502,6 +505,9 @@ HTML = """
           <tr><td colspan="5" style="color:#aaa;font-size:12px;padding:10px 8px;">Sin datos todavia.</td></tr>
         </tbody>
       </table>
+    </div>
+    <div class="mobile-only" id="coberturaCards">
+      <p class="hist-empty">Sin datos todavia.</p>
     </div>
   </div>
 
@@ -952,11 +958,14 @@ function actualizarSelectZonas() {
 
 function renderHistorial(h) {
   const tbody = document.getElementById('histBody');
+  const cards = document.getElementById('histCards');
   if (!h || h.length === 0) {
     tbody.innerHTML = '<tr><td colspan="6" class="hist-empty">Sin corridas todavia.</td></tr>';
+    cards.innerHTML = '<p class="hist-empty">Sin corridas todavia.</p>';
     return;
   }
   tbody.innerHTML = '';
+  cards.innerHTML = '';
   h.forEach(function(r) {
     const bruto  = r.bruto  || 0;
     const nuevos = r.nuevos || 0;
@@ -996,11 +1005,27 @@ function renderHistorial(h) {
       '<td>' + (r.costo_real != null ? '$' + r.costo_real.toFixed(3) : '-') + '</td>' +
       '<td><span class="pill ' + pillClass + '">' + pillText + '</span></td>';
     tbody.appendChild(tr);
+
+    const card = document.createElement('div');
+    card.className = 'item-card';
+    card.innerHTML =
+      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">' +
+        '<span style="font-size:12px;color:#64748B;">' + r.fecha + '</span>' +
+        '<span class="pill ' + pillClass + '">' + pillText + '</span>' +
+      '</div>' +
+      '<div style="margin-bottom:6px;">' + fuenteBadge + '</div>' +
+      '<div style="font-size:13px;color:#334155;margin-bottom:6px;">' + r.zona + '</div>' +
+      '<div style="font-size:12px;color:#64748B;">' +
+        '<strong style="color:#0F172A;">' + nuevos + '</strong> nuevos &middot; ' + bruto + ' encontrados' +
+        (r.costo_real != null ? ' &middot; $' + r.costo_real.toFixed(3) : '') +
+      '</div>';
+    cards.appendChild(card);
   });
 }
 
 function renderCobertura() {
   var tbody = document.getElementById('coberturaBody');
+  var cards = document.getElementById('coberturaCards');
   var cat   = currentCat;
   var filas = [];
 
@@ -1014,6 +1039,7 @@ function renderCobertura() {
 
   if (filas.length === 0) {
     tbody.innerHTML = '<tr><td colspan="5" style="color:#aaa;font-size:12px;padding:10px 8px;">Sin datos para esta categoria.</td></tr>';
+    cards.innerHTML = '<p class="hist-empty">Sin datos para esta categoria.</p>';
     return;
   }
 
@@ -1025,6 +1051,7 @@ function renderCobertura() {
   });
 
   tbody.innerHTML = '';
+  cards.innerHTML = '';
   filas.forEach(function(f) {
     var ub = f.stat.ultima_bruto;
     var un = f.stat.ultima_nuevos;
@@ -1035,14 +1062,27 @@ function renderCobertura() {
       .replace(', Ciudad Autonoma de Buenos Aires, Argentina','')
       .replace(', Buenos Aires, Argentina','')
       .replace(', Argentina','');
+
     var tr = document.createElement('tr');
     tr.innerHTML =
       '<td><span class="zona-dot hecha"></span>' + zonaNombre + '</td>' +
       '<td>' + f.stat.corridas + '</td>' +
-      '<td><strong>' + nuevos + '</strong></td>' +
+      '<td><strong>' + f.stat.nuevos + '</strong></td>' +
       '<td><span class="pct-badge ' + pctClass + '">' + pctLabel + '</span></td>' +
       '<td style="color:#999">' + f.stat.ultima + '</td>';
     tbody.appendChild(tr);
+
+    var card = document.createElement('div');
+    card.className = 'item-card';
+    card.innerHTML =
+      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">' +
+        '<span><span class="zona-dot hecha"></span>' + zonaNombre + '</span>' +
+        '<span class="pct-badge ' + pctClass + '">' + pctLabel + '</span>' +
+      '</div>' +
+      '<div style="font-size:12px;color:#64748B;">' +
+        f.stat.corridas + ' corridas &middot; <strong style="color:#0F172A;">' + f.stat.nuevos + '</strong> nuevos &middot; ultima: ' + f.stat.ultima +
+      '</div>';
+    cards.appendChild(card);
   });
 }
 
