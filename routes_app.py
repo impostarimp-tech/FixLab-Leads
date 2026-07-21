@@ -213,6 +213,24 @@ BASE_STYLE = """
     .desktop-only { display: none; }
     .mobile-only { display: block; }
   }
+
+  .bottom-nav { display: none; }
+  @media (max-width: 767px) {
+    .nav-row { display: none; }
+    .bottom-nav {
+      display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+      background: var(--surface); border-top: 1px solid var(--border);
+      box-shadow: 0 -2px 8px rgba(15, 23, 42, 0.06);
+    }
+    .bottom-nav a {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 8px 2px 10px; font-size: 10px; font-weight: 600; color: var(--text-muted);
+      text-decoration: none;
+    }
+    .bottom-nav a.active { color: var(--blue); }
+    .bn-icon { font-size: 18px; line-height: 1; }
+    body { padding-bottom: 76px; }
+  }
 </style>
 """
 
@@ -224,10 +242,31 @@ NAV_LINKS = """
   <a class="btn-secondary" href="{{ url_for('rutas.mapa') }}">Mapa</a>
   <a class="btn-secondary" href="{{ url_for('rutas.crm') }}">CRM</a>
 </div>
+
+<nav class="bottom-nav">
+  <a href="{{ url_for('rutas.home') }}"><span class="bn-icon">&#127968;</span>Inicio</a>
+  <a href="{{ url_for('rutas.historial') }}"><span class="bn-icon">&#128337;</span>Historial</a>
+  <a href="{{ url_for('rutas.fallidos') }}"><span class="bn-icon">&#9888;</span>Fallidos</a>
+  <a href="{{ url_for('rutas.mapa') }}"><span class="bn-icon">&#128506;</span>Mapa</a>
+  <a href="{{ url_for('rutas.crm') }}"><span class="bn-icon">&#128203;</span>CRM</a>
+</nav>
+
+<script>
+(function() {
+  var path = window.location.pathname;
+  var homeHref = new URL('{{ url_for("rutas.home") }}', window.location.origin).pathname;
+  document.querySelectorAll('.bottom-nav a').forEach(function(a) {
+    var linkPath = new URL(a.href).pathname;
+    var isMatch = linkPath === homeHref ? path === homeHref : path.indexOf(linkPath) === 0;
+    if (isMatch) a.classList.add('active');
+  });
+})();
+</script>
 """
 
 PAGE_HOME = """
 <!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rutas comerciales</title>
 """ + BASE_STYLE + NAV_LINKS + """
 <h1>Generador de rutas comerciales</h1>
@@ -348,6 +387,7 @@ function sincronizar() {
 
 PAGE_RESULTADO = """
 <!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lote generado</title>
 """ + BASE_STYLE + NAV_LINKS + """
 <h1>Lote #{{ resultado.lote_id }}{% if resultado.categoria %} — {{ resultado.categoria }}{% endif %}
@@ -387,6 +427,7 @@ PAGE_RESULTADO = """
 
 PAGE_ERROR = """
 <!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Error</title>
 """ + BASE_STYLE + NAV_LINKS + """
 <p>Error: {{ error }}</p>
@@ -394,6 +435,7 @@ PAGE_ERROR = """
 
 PAGE_FALLIDOS = """
 <!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Leads no geocodificables</title>
 """ + BASE_STYLE + NAV_LINKS + """
 <h1>Leads no geocodificables</h1>
@@ -418,6 +460,7 @@ PAGE_FALLIDOS = """
 
 PAGE_HISTORIAL = """
 <!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Historial de lotes</title>
 """ + BASE_STYLE + NAV_LINKS + """
 <h1>Historial de lotes</h1>
@@ -446,6 +489,7 @@ PAGE_HISTORIAL = """
 
 PAGE_MAPA = """
 <!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mapa de rutas</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -647,6 +691,7 @@ OUTREACH_STATUS_LABELS = {
 
 PAGE_CRM = """
 <!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CRM de leads</title>
 """ + BASE_STYLE + NAV_LINKS + """
 <style>
