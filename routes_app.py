@@ -519,6 +519,27 @@ PAGE_MAPA = """
     text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 2px;
   }
   #panel .panel-placeholder { color: var(--text-muted); }
+
+  .filtros-toggle-mapa { display: none; }
+  @media (max-width: 767px) {
+    .map-layout { flex-direction: column; }
+    #map { height: 400px; width: 100%; }
+    .filtros-toggle-mapa {
+      display: inline-flex; background: var(--light); color: var(--blue);
+      border: 1px solid var(--blue); border-radius: 8px; padding: 7px 12px;
+      font-size: 12px; font-weight: 700; cursor: pointer; margin-bottom: 10px;
+    }
+    #filtros { display: none; }
+    #filtros.open { display: block; }
+    #panel {
+      position: fixed; left: 0; right: 0; bottom: 0; width: auto; height: auto;
+      max-height: 70vh; border-radius: 16px 16px 0 0; z-index: 60;
+      transform: translateY(100%); transition: transform .25s ease;
+      box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.12);
+    }
+    #panel.open { transform: translateY(0); }
+    .sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 10px; cursor: pointer; }
+  }
 </style>
 <h1>Mapa de rutas</h1>
 
@@ -532,6 +553,7 @@ PAGE_MAPA = """
     <span class="cat-dot" style="background:#3cb44b;"></span>Telefonos</button>
 </div>
 
+<button type="button" class="filtros-toggle-mapa" onclick="document.getElementById('filtros').classList.toggle('open')">Filtros de lotes</button>
 <div id="filtros">
   {% for lote in lotes %}
     <label>
@@ -590,6 +612,10 @@ PAGE_MAPA = """
       options + '</select></form></div>';
   }
 
+  function closePanel() {
+    document.getElementById('panel').classList.remove('open');
+  }
+
   function renderPanel(lead, prefix) {
     var panel = document.getElementById('panel');
     var ratingText = (lead.rating != null && lead.reviews_count != null)
@@ -598,12 +624,14 @@ PAGE_MAPA = """
     var categoriaText = lead.categorias ? lead.categorias.join(", ") : lead.categoria;
     var leadIds = lead.lead_ids || (lead.id ? [lead.id] : []);
     panel.innerHTML =
+      '<div class="sheet-handle" onclick="closePanel()"></div>' +
       "<h3>" + (prefix || "") + escapeHtml(lead.negocio) + "</h3>" +
       panelRow("Categoria", categoriaText) +
       panelRow("Direccion", lead.direccion) +
       panelRow("Telefono", lead.telefono) +
       panelRow("Rating", ratingText) +
       (leadIds.length ? estadoSelectHtml(lead) : "");
+    panel.classList.add('open');
 
     var select = panel.querySelector(".estado-select");
     if (select) {
