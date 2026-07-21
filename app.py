@@ -439,7 +439,7 @@ HTML = """
           <h3 id="leadsTitle">Leads nuevos</h3>
           <input class="leads-filter" type="text" id="leadsFilter" placeholder="Filtrar..." oninput="filtrarLeads()">
         </div>
-        <div class="leads-table-wrap">
+        <div class="leads-table-wrap desktop-only">
           <table id="leadsTable">
             <thead>
               <tr>
@@ -454,6 +454,7 @@ HTML = """
             <tbody id="leadsBody"></tbody>
           </table>
         </div>
+        <div class="mobile-only" id="leadsCards"></div>
       </div>
 
     </div>
@@ -792,8 +793,10 @@ function focoBadge(foco) {
 function renderLeads(leads) {
   const sec   = document.getElementById('leadsSection');
   const tbody = document.getElementById('leadsBody');
+  const cards = document.getElementById('leadsCards');
   const title = document.getElementById('leadsTitle');
   tbody.innerHTML = '';
+  cards.innerHTML = '';
 
   if (!leads || leads.length === 0) {
     sec.style.display = 'none';
@@ -802,10 +805,11 @@ function renderLeads(leads) {
 
   title.textContent = leads.length + ' leads nuevos agregados';
   leads.forEach(function(l) {
-    const tr = document.createElement('tr');
     const mapsLink = l.Maps_URL
       ? '<a class="maps-link" href="' + l.Maps_URL + '" target="_blank">Ver</a>'
       : '-';
+
+    const tr = document.createElement('tr');
     tr.innerHTML =
       '<td><strong>' + (l.Negocio || '') + '</strong>' +
         (l.Direccion ? '<br><span style="color:#888;font-size:11px">' + l.Direccion + '</span>' : '') +
@@ -816,6 +820,21 @@ function renderLeads(leads) {
       '<td style="white-space:nowrap">' + (l.Telefono || '-') + '</td>' +
       '<td>' + mapsLink + '</td>';
     tbody.appendChild(tr);
+
+    const card = document.createElement('div');
+    card.className = 'item-card';
+    card.innerHTML =
+      '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">' +
+        '<strong>' + (l.Negocio || '') + '</strong>' +
+        focoBadge(l.Foco_Apple) +
+      '</div>' +
+      (l.Direccion ? '<div style="color:#64748B;font-size:12px;margin-bottom:6px;">' + l.Direccion + '</div>' : '') +
+      '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+        tipoBadge(l.Tipo) +
+        '<span style="font-size:12px;color:#64748B;">' + (l.Resenas || 0) + ' reviews &middot; ' + (l.Telefono || '-') + '</span>' +
+      '</div>' +
+      (mapsLink !== '-' ? '<div style="margin-top:8px;">' + mapsLink + '</div>' : '');
+    cards.appendChild(card);
   });
 
   sec.style.display = 'block';
