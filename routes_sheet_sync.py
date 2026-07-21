@@ -170,7 +170,13 @@ def sync_all_tabs_progress(conn: sqlite3.Connection, client: gspread.Client):
     pendientes = db.get_pending_geocode(conn)
     total_pendientes = len(pendientes)
     if total_pendientes:
-        yield {"type": "log", "msg": f"Geocodificando {total_pendientes} leads pendientes..."}
+        nunca_intentados = sum(1 for r in pendientes if r["geocode_source"] == "pendiente")
+        reintentos = total_pendientes - nunca_intentados
+        yield {
+            "type": "log",
+            "msg": f"Geocodificando {total_pendientes} leads "
+                   f"({nunca_intentados} nuevos, {reintentos} reintentos)...",
+        }
 
     geocodificados = 0
     fallidos = 0

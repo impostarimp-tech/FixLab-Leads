@@ -264,7 +264,12 @@ function onOrigenSelectChange() {
 </script>
 
 <button type="button" id="syncBtn" onclick="sincronizar()">Sincronizar leads desde el Sheet</button>
-<p id="syncProgress"></p>
+<div id="syncProgressWrap" style="display:none; margin-top:10px;">
+  <div style="background:var(--border); border-radius:6px; height:8px; overflow:hidden;">
+    <div id="syncProgressBar" style="height:100%; width:0%; background:var(--blue); transition:width .2s;"></div>
+  </div>
+</div>
+<p id="syncProgress" style="font-size:13px; color:var(--text-muted); margin:6px 0 0;"></p>
 <div id="syncLog" style="max-height: 200px; overflow-y: auto; font-size: 13px; color: #555;"></div>
 
 <script>
@@ -279,8 +284,12 @@ function appendSyncLog(msg) {
 function sincronizar() {
   var btn = document.getElementById('syncBtn');
   var progress = document.getElementById('syncProgress');
+  var barWrap = document.getElementById('syncProgressWrap');
+  var bar = document.getElementById('syncProgressBar');
   document.getElementById('syncLog').innerHTML = '';
   progress.textContent = '';
+  bar.style.width = '0%';
+  barWrap.style.display = 'none';
   btn.disabled = true;
 
   var src = new EventSource('{{ url_for("rutas.sincronizar_stream") }}');
@@ -290,10 +299,14 @@ function sincronizar() {
     if (data.type === 'log') {
       appendSyncLog(data.msg);
     } else if (data.type === 'progress') {
-      progress.textContent = 'Geocodificando: ' + data.actual + ' / ' + data.total +
-        (data.negocio ? ' (' + data.negocio + ')' : '');
+      barWrap.style.display = 'block';
+      var pct = data.total ? Math.round((data.actual / data.total) * 100) : 0;
+      bar.style.width = pct + '%';
+      progress.textContent = 'Geocodificando: ' + data.actual + ' / ' + data.total + ' (' + pct + '%)' +
+        (data.negocio ? ' — ' + data.negocio : '');
     } else if (data.type === 'done') {
       progress.textContent = '';
+      barWrap.style.display = 'none';
       appendSyncLog('Listo: ' + data.summary.nuevos + ' nuevos, ' +
         data.summary.geocodificados + ' geocodificados, ' + data.summary.fallidos + ' fallidos.');
       btn.disabled = false;
@@ -301,13 +314,16 @@ function sincronizar() {
     } else if (data.type === 'error') {
       appendSyncLog('Error: ' + data.msg);
       btn.disabled = false;
+      barWrap.style.display = 'none';
       src.close();
     }
   };
 
   src.onerror = function() {
-    appendSyncLog('Se perdio la conexion con el servidor.');
+    appendSyncLog('Se corto la conexion (probable limite de tiempo del hosting en una sincronizacion grande). ' +
+      'Tu progreso ya quedo guardado -- apreta "Sincronizar" de nuevo para continuar.');
     btn.disabled = false;
+    barWrap.style.display = 'none';
     src.close();
   };
 }
