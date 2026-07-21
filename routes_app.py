@@ -554,7 +554,7 @@ PAGE_MAPA = """
   .filtros-toggle-mapa { display: none; }
   @media (max-width: 767px) {
     .map-layout { flex-direction: column; }
-    #map { height: 400px; width: 100%; }
+    #map { height: 400px; width: 100%; flex: none; }
     .filtros-toggle-mapa {
       display: inline-flex; background: var(--light); color: var(--blue);
       border: 1px solid var(--blue); border-radius: 8px; padding: 7px 12px;
