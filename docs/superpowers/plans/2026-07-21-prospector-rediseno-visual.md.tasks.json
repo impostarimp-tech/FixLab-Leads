@@ -2,39 +2,39 @@
   "planPath": "docs/superpowers/plans/2026-07-21-prospector-rediseno-visual.md",
   "tasks": [
     {
-      "id": 0,
+      "id": 13,
       "subject": "Task 1: Palette/typography + utility classes in app.py style block",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** Port the sky/slate palette and Inter font into app.py's own `<style>` block (hex values, no CSS variables), plus add `.desktop-only`/`.mobile-only`/`.item-card` utility classes needed by later tasks.\n\n**Files:**\n- Modify: `app.py:180-309` (the `<style>` block)\n\n**Acceptance Criteria:**\n- [ ] All neutral/brand colors (backgrounds, text, borders, buttons, tab-bar, header) replaced with new palette equivalents\n- [ ] Semantic status colors (semaforo verde/amarillo/rojo, pill/badge colors) left unchanged\n- [ ] Inter font imported and applied\n- [ ] `.desktop-only`, `.mobile-only`, `.item-card` classes added\n- [ ] All 133 existing pytest tests still pass (no logic touched)\n- [ ] Manual check: page loads with new palette, no visual breakage\n\n**Verify:** `pytest -q` → 133 passed\n\n```json:metadata\n{\"files\": [\"app.py\"], \"verifyCommand\": \"pytest -q\", \"acceptanceCriteria\": [\"palette ported\", \"semantic colors unchanged\", \"Inter font applied\", \"utility classes added\", \"tests pass\"]}\n```"
     },
     {
-      "id": 1,
+      "id": 14,
       "subject": "Task 2: Responsive form row + stat grids",
-      "status": "pending",
-      "blockedBy": [0],
+      "status": "completed",
+      "blockedBy": [13],
       "description": "**Goal:** Stack the max-resultados/terminos row to one column on mobile, and make both stat-grids (4-col main, 3-col Instagram) collapse to 2 columns on mobile — fixing the IG stat-grid's inline style first since inline styles can't be overridden by a media query class rule.\n\n**Files:**\n- Modify: `app.py` (style block, and the IG stat-grid div around line 533)\n\n**Acceptance Criteria:**\n- [ ] IG stat-grid's inline `style=\"grid-template-columns: repeat(3, 1fr);\"` replaced with a `.stat-grid-3` class\n- [ ] Mobile: `.row` becomes 1 column, both `.stat-grid` and `.stat-grid-3` become 2 columns\n- [ ] Desktop: unchanged (4-col main stats, 3-col IG stats, 2-col row)\n- [ ] `pytest -q` still 133 passed\n\n**Verify:** Manual browser check at 375px and 1280px\n\n```json:metadata\n{\"files\": [\"app.py\"], \"verifyCommand\": \"manual browser check\", \"acceptanceCriteria\": [\"inline style replaced with class\", \"mobile grids collapse to 2 columns\", \"desktop unchanged\"]}\n```"
     },
     {
-      "id": 2,
+      "id": 15,
       "subject": "Task 3: Leads results table mobile card layout",
-      "status": "pending",
-      "blockedBy": [0],
+      "status": "completed",
+      "blockedBy": [13],
       "description": "**Goal:** Add a mobile card list for the search-results leads table, generated client-side from the same data as the table (this page renders tables via JS, not Jinja, unlike Rutas).\n\n**Files:**\n- Modify: `app.py` (leads table HTML around line 417-438, `renderLeads()` JS function around line 773)\n\n**Acceptance Criteria:**\n- [ ] Desktop table wrapped in `.desktop-only`, new `#leadsCards` mobile-only div added\n- [ ] `renderLeads()` populates both the table body and `#leadsCards` from the same `leads` array\n- [ ] Mobile cards show negocio, direccion, tipo/foco badges, resenas, telefono, maps link\n- [ ] `pytest -q` still 133 passed\n\n**Verify:** Manual browser check at 375px and 1280px after running a test search\n\n```json:metadata\n{\"files\": [\"app.py\"], \"verifyCommand\": \"manual browser check\", \"acceptanceCriteria\": [\"desktop table unchanged\", \"mobile cards render from same data\", \"all lead fields present in cards\"]}\n```"
     },
     {
-      "id": 3,
+      "id": 16,
       "subject": "Task 4: Historial + Cobertura tables mobile card layout",
-      "status": "pending",
-      "blockedBy": [0],
+      "status": "completed",
+      "blockedBy": [13],
       "description": "**Goal:** Add mobile card lists for the \"Historial de corridas\" and \"Cobertura de zonas\" tables, generated client-side. Also fixes a pre-existing bug (undefined `nuevos` reference) in `renderCobertura()` encountered while rewriting it.\n\n**Files:**\n- Modify: `app.py` (historial/cobertura HTML around lines 443-486, `renderHistorial()` around line 915, `renderCobertura()` around line 964)\n\n**Acceptance Criteria:**\n- [ ] Both tables wrapped in `.desktop-only`, new mobile-only card containers added\n- [ ] `renderHistorial()` and `renderCobertura()` populate both table and cards from the same data\n- [ ] `renderCobertura()`'s card and table both correctly show `f.stat.nuevos` (fixing the pre-existing undefined `nuevos` bug)\n- [ ] Empty states render correctly in both layouts\n- [ ] `pytest -q` still 133 passed\n\n**Verify:** Manual browser check at 375px and 1280px after running a test search\n\n```json:metadata\n{\"files\": [\"app.py\"], \"verifyCommand\": \"manual browser check\", \"acceptanceCriteria\": [\"desktop tables unchanged\", \"mobile cards render\", \"nuevos bug fixed\", \"empty states correct\"]}\n```"
     },
     {
-      "id": 4,
+      "id": 17,
       "subject": "Task 5: Instagram results table mobile card layout",
-      "status": "pending",
-      "blockedBy": [0, 1],
+      "status": "completed",
+      "blockedBy": [13, 14],
       "description": "**Goal:** Add a mobile card list for the Instagram results table, generated client-side.\n\n**Files:**\n- Modify: `app.py` (IG results HTML around lines 548-566, `showIGResults()` JS function around line 1066)\n\n**Acceptance Criteria:**\n- [ ] Desktop table wrapped in `.desktop-only`, new `#igLeadsCards` mobile-only div added\n- [ ] `showIGResults()` populates both the table body and `#igLeadsCards` from the same `leads` array\n- [ ] Mobile cards show cuenta/username, seguidores, foco badge, contacto, Instagram link\n- [ ] `pytest -q` still 133 passed\n\n**Verify:** Manual browser check at 375px and 1280px\n\n```json:metadata\n{\"files\": [\"app.py\"], \"verifyCommand\": \"manual browser check\", \"acceptanceCriteria\": [\"desktop table unchanged\", \"mobile cards render from same data\", \"all IG lead fields present\"]}\n```"
     }
   ],
-  "lastUpdated": "2026-07-21T00:00:00Z"
+  "lastUpdated": "2026-07-21T12:10:00Z"
 }
