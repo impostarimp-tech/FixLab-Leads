@@ -695,51 +695,69 @@ PAGE_CRM = """
 <title>CRM de leads</title>
 """ + BASE_STYLE + NAV_LINKS + """
 <style>
-  .crm-toolbar {
-    display: flex; justify-content: space-between; align-items: flex-end;
-    gap: 16px; flex-wrap: wrap; margin-bottom: 12px;
-  }
-  .filtros-form { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 0; }
-  .filtros-form label { margin-bottom: 0; }
+  .crm-toolbar { margin-bottom: 12px; }
+  .search-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .search-row input[type="text"] { flex: 1; margin-top: 0; }
+  .filtros-toggle { display: none; }
+  .filtros-panel { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .filtros-panel label { margin-bottom: 0; }
+  .crm-export-row { margin-top: 10px; }
   .crm-summary { color: var(--text-muted); font-size: 13px; margin: 0 0 10px; }
   .pager { display: flex; justify-content: space-between; margin-top: 12px; font-size: 13px; }
+  @media (max-width: 767px) {
+    .filtros-toggle {
+      display: inline-flex; background: var(--light); color: var(--blue);
+      border: 1px solid var(--blue); border-radius: 8px; padding: 7px 12px;
+      font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .filtros-panel { display: none; flex-direction: column; align-items: stretch; margin-top: 10px; }
+    .filtros-panel.open { display: flex; }
+  }
 </style>
 <h1>CRM de leads</h1>
 
 <div class="crm-toolbar">
-  <form method="get" class="filtros-form">
-    <label>Categoria:
-      <select name="categoria">
-        <option value="">Todas</option>
-        {% for cat in ["Repuestos", "Fundas", "Telefonos"] %}
-          <option value="{{ cat }}" {% if categoria == cat %}selected{% endif %}>{{ cat }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>Estado:
-      <select name="estado">
-        <option value="">Todos</option>
-        {% for value, label in status_labels.items() %}
-          <option value="{{ value }}" {% if estado == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>Reviews minimas:
-      <input type="number" name="min_reviews" min="0" step="1" value="{{ min_reviews or '' }}" style="width:80px;">
-    </label>
-    <label>Rating minimo:
-      <input type="number" name="min_rating" min="0" max="5" step="0.1" value="{{ min_rating or '' }}" style="width:80px;">
-    </label>
-    <button type="submit">Filtrar</button>
+  <form method="get" id="crmForm">
+    <div class="search-row">
+      <input type="text" name="q" value="{{ q or '' }}" placeholder="Buscar negocio, direccion, telefono...">
+      <button type="button" class="filtros-toggle" onclick="document.getElementById('filtrosPanel').classList.toggle('open')">Filtros</button>
+    </div>
+    <div class="filtros-panel" id="filtrosPanel">
+      <label>Categoria:
+        <select name="categoria">
+          <option value="">Todas</option>
+          {% for cat in ["Repuestos", "Fundas", "Telefonos"] %}
+            <option value="{{ cat }}" {% if categoria == cat %}selected{% endif %}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Estado:
+        <select name="estado">
+          <option value="">Todos</option>
+          {% for value, label in status_labels.items() %}
+            <option value="{{ value }}" {% if estado == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Reviews minimas:
+        <input type="number" name="min_reviews" min="0" step="1" value="{{ min_reviews or '' }}" style="width:80px;">
+      </label>
+      <label>Rating minimo:
+        <input type="number" name="min_rating" min="0" max="5" step="0.1" value="{{ min_rating or '' }}" style="width:80px;">
+      </label>
+      <button type="submit">Filtrar</button>
+    </div>
   </form>
-  <a class="btn-secondary" href="{{ url_for('rutas.exportar_crm_csv', categoria=categoria, estado=estado, min_reviews=min_reviews, min_rating=min_rating) }}">
-    Exportar CSV
-  </a>
+  <div class="crm-export-row">
+    <a class="btn-secondary" href="{{ url_for('rutas.exportar_crm_csv', categoria=categoria, estado=estado, min_reviews=min_reviews, min_rating=min_rating, q=q) }}">
+      Exportar CSV
+    </a>
+  </div>
 </div>
 
 <p class="crm-summary">{{ total }} lead{{ "s" if total != 1 else "" }} — pagina {{ page }} de {{ total_pages }}</p>
 
-<div class="table-wrap">
+<div class="table-wrap desktop-only">
 <table>
   <thead>
     <tr>
@@ -781,15 +799,44 @@ PAGE_CRM = """
 </table>
 </div>
 
+<div class="mobile-only">
+  {% for lead in leads %}
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+      <strong>{{ lead.negocio }}</strong>
+      <span class="cat-dot cat-{{ lead.categoria }}"></span>
+    </div>
+    <div style="font-size:12px; color:var(--text-muted); line-height:1.6; margin-bottom:8px;">
+      {{ lead.direccion or "-" }}<br>
+      {{ lead.telefono or "-" }} &middot;
+      {% if lead.rating is not none %}{{ lead.rating }} &#9733;{% if lead.reviews_count is not none %} ({{ lead.reviews_count }} reviews){% endif %}{% else %}Sin rating{% endif %}
+    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--bg); padding-top:8px;">
+      {% if lead.lat %}<span class="badge badge-ok">Geo OK</span>{% else %}<span class="badge badge-no">Sin geo</span>{% endif %}
+      <form method="post" class="estado-form" action="{{ url_for('rutas.actualizar_estado', lead_id=lead.id) }}">
+        <select name="estado" class="estado-select estado-{{ lead.outreach_status }}"
+                onchange="this.className = 'estado-select estado-' + this.value; this.form.submit();">
+          {% for value, label in status_labels.items() %}
+            <option value="{{ value }}" {% if lead.outreach_status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <p style="text-align:center; color:var(--text-muted); padding:20px;">No hay leads para este filtro.</p>
+  {% endfor %}
+</div>
+
 <div class="pager">
   <span>
     {% if page > 1 %}
-      <a href="{{ url_for('rutas.crm', categoria=categoria, estado=estado, min_reviews=min_reviews, min_rating=min_rating, page=page-1) }}">&laquo; Anterior</a>
+      <a href="{{ url_for('rutas.crm', categoria=categoria, estado=estado, min_reviews=min_reviews, min_rating=min_rating, q=q, page=page-1) }}">&laquo; Anterior</a>
     {% endif %}
   </span>
   <span>
     {% if page < total_pages %}
-      <a href="{{ url_for('rutas.crm', categoria=categoria, estado=estado, min_reviews=min_reviews, min_rating=min_rating, page=page+1) }}">Siguiente &raquo;</a>
+      <a href="{{ url_for('rutas.crm', categoria=categoria, estado=estado, min_reviews=min_reviews, min_rating=min_rating, q=q, page=page+1) }}">Siguiente &raquo;</a>
     {% endif %}
   </span>
 </div>
@@ -941,16 +988,17 @@ def crm():
     estado = request.args.get("estado", "").strip()
     min_reviews = request.args.get("min_reviews", type=int)
     min_rating = request.args.get("min_rating", type=float)
+    q = request.args.get("q", "").strip()
     page = max(1, request.args.get("page", 1, type=int))
     conn = _conn()
     try:
         leads = db.get_crm_leads(
             conn, categoria=categoria or None, outreach_status=estado or None,
-            min_reviews=min_reviews, min_rating=min_rating, page=page,
+            min_reviews=min_reviews, min_rating=min_rating, q=q or None, page=page,
         )
         total = db.count_crm_leads(
             conn, categoria=categoria or None, outreach_status=estado or None,
-            min_reviews=min_reviews, min_rating=min_rating,
+            min_reviews=min_reviews, min_rating=min_rating, q=q or None,
         )
     finally:
         conn.close()
@@ -962,6 +1010,7 @@ def crm():
         estado=estado,
         min_reviews=min_reviews,
         min_rating=min_rating,
+        q=q,
         status_labels=OUTREACH_STATUS_LABELS,
         page=page,
         total_pages=total_pages,
@@ -975,11 +1024,12 @@ def exportar_crm_csv():
     estado = request.args.get("estado", "").strip()
     min_reviews = request.args.get("min_reviews", type=int)
     min_rating = request.args.get("min_rating", type=float)
+    q = request.args.get("q", "").strip()
     conn = _conn()
     try:
         leads = db.get_crm_leads_all(
             conn, categoria=categoria or None, outreach_status=estado or None,
-            min_reviews=min_reviews, min_rating=min_rating,
+            min_reviews=min_reviews, min_rating=min_rating, q=q or None,
         )
     finally:
         conn.close()
