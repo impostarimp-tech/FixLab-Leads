@@ -14,6 +14,18 @@ from flask import Flask, render_template_string, request, jsonify, Response
 import routes_app
 import routes_db
 
+
+def _python_executable() -> str:
+    """sys.executable points at the uwsgi binary when running under uWSGI
+    (PythonAnywhere), not a real Python interpreter -- subprocess calls built
+    from it then fail with "unrecognized option" since uwsgi parses the args
+    as its own flags. Fall back to the virtualenv's own python in that case."""
+    if "uwsgi" not in os.path.basename(sys.executable).lower():
+        return sys.executable
+    candidate = os.path.join(sys.prefix, "bin", "python3")
+    return candidate if os.path.exists(candidate) else sys.executable
+
+
 app = Flask(__name__)
 
 routes_db.init_db()
@@ -1314,7 +1326,7 @@ def run():
         env["SPREADSHEET_URL"]  = os.getenv("SPREADSHEET_URL", "")
         env["PYTHONIOENCODING"] = "utf-8"
 
-        cmd = [sys.executable, "prospector.py", "--zona", zona, "--max", max_res, "--terms", terms, "--categoria", categoria]
+        cmd = [_python_executable(), "prospector.py", "--zona", zona, "--max", max_res, "--terms", terms, "--categoria", categoria]
         if test_mode:
             cmd.append("--test")
 
@@ -1408,7 +1420,7 @@ def run_instagram():
         env["SPREADSHEET_URL"]  = os.getenv("SPREADSHEET_URL", "")
         env["PYTHONIOENCODING"] = "utf-8"
 
-        cmd = [sys.executable, "instagram_scraper.py",
+        cmd = [_python_executable(), "instagram_scraper.py",
                "--accounts", accounts, "--mentions", mentions, "--categoria", categoria]
         if test_mode:
             cmd.append("--test")
@@ -1491,7 +1503,7 @@ def run_followers():
         env["PYTHONIOENCODING"]  = "utf-8"
         env["PYTHONUNBUFFERED"]  = "1"
 
-        cmd = [sys.executable, "instagram_followers.py",
+        cmd = [_python_executable(), "instagram_followers.py",
                "--accounts", accounts, "--max", max_foll]
         if test_mode:
             cmd.append("--test")
