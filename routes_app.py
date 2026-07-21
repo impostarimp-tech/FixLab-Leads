@@ -611,6 +611,9 @@ PAGE_MAPA = """
     <span class="cat-dot" style="background:#3cb44b;"></span>Telefonos</button>
 </div>
 
+<button type="button" class="btn-secondary" id="btnCercaDeMi" onclick="cercaDeMi()">Cerca de mi</button>
+<p id="ubicacionError" style="display:none; color:#dc2626; font-size:12px; margin-top:6px;"></p>
+
 <button type="button" class="filtros-toggle-mapa" onclick="document.getElementById('filtros').classList.toggle('open')">Filtros de lotes</button>
 <div id="filtros">
   {% for lote in lotes %}
@@ -674,7 +677,7 @@ PAGE_MAPA = """
     document.getElementById('panel').classList.remove('open');
   }
 
-  function renderPanel(lead, prefix) {
+  function renderPanel(lead, prefix, distanciaTexto) {
     var panel = document.getElementById('panel');
     var ratingText = (lead.rating != null && lead.reviews_count != null)
       ? lead.rating + " (" + lead.reviews_count + " reviews)"
@@ -684,6 +687,7 @@ PAGE_MAPA = """
     panel.innerHTML =
       '<div class="sheet-handle" onclick="closePanel()"></div>' +
       "<h3>" + (prefix || "") + escapeHtml(lead.negocio) + "</h3>" +
+      (distanciaTexto ? panelRow("Distancia", distanciaTexto) : "") +
       panelRow("Categoria", categoriaText) +
       panelRow("Direccion", lead.direccion) +
       panelRow("Telefono", lead.telefono) +
@@ -738,6 +742,57 @@ PAGE_MAPA = """
     map.fitBounds(bounds, {padding: [20, 20]});
   } else {
     map.setView([-34.6, -58.4], 12);
+  }
+
+  function haversineMetros(lat1, lng1, lat2, lng2) {
+    var R = 6371000;
+    var toRad = function(d) { return d * Math.PI / 180; };
+    var dLat = toRad(lat2 - lat1);
+    var dLng = toRad(lng2 - lng1);
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  function formatDistancia(metros) {
+    if (metros < 1000) return Math.round(metros) + 'm';
+    return (metros / 1000).toFixed(1) + 'km';
+  }
+
+  function cercaDeMi() {
+    var errorMsg = document.getElementById('ubicacionError');
+    errorMsg.style.display = 'none';
+    if (!navigator.geolocation) {
+      errorMsg.textContent = 'Tu navegador no soporta geolocalizacion.';
+      errorMsg.style.display = 'block';
+      return;
+    }
+    if (allLeads.length === 0) {
+      errorMsg.textContent = 'No hay leads geocodificados para buscar.';
+      errorMsg.style.display = 'block';
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(function(pos) {
+      var lat = pos.coords.latitude;
+      var lng = pos.coords.longitude;
+      var closest = null;
+      var closestDist = Infinity;
+      allLeads.forEach(function(lead) {
+        var dist = haversineMetros(lat, lng, lead.lat, lead.lng);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closest = lead;
+        }
+      });
+      if (!closest) return;
+      map.setView([closest.lat, closest.lng], 16);
+      renderPanel(closest, "", formatDistancia(closestDist) + " de tu ubicacion");
+    }, function() {
+      errorMsg.textContent = 'No se pudo obtener tu ubicacion -- revisa los permisos del navegador.';
+      errorMsg.style.display = 'block';
+    });
   }
 
   const loteLayers = {};
