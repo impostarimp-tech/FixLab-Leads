@@ -1,0 +1,46 @@
+{
+  "planPath": "docs/superpowers/plans/2026-07-21-rutas-rediseno-visual.md",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 1: Design tokens + shared components in BASE_STYLE",
+      "status": "pending",
+      "description": "**Goal:** Replace the current ad-hoc palette in `BASE_STYLE` with the sky/slate tokens from catalogo-mayorista-b2b, plus shared utility classes (`.card`, `.desktop-only`, `.mobile-only`) needed by later mobile-card tasks.\n\n**Files:**\n- Modify: `routes_app.py:99-201` (BASE_STYLE)\n\n**Acceptance Criteria:**\n- [ ] CSS variables updated to new palette (--blue: #0284C7, --blue-dark: #0369A1, --accent: #0EA5E9, --bg: #F8FAFC, --text: #334155, --text-muted: #64748B, --dark: #0F172A, --border: #D8EBF2, --light: #E8F4F8)\n- [ ] Inter font imported and applied\n- [ ] Cards/forms use 16px radius, buttons use 12px radius, badges gain a subtle border\n- [ ] New `.card`, `.desktop-only`, `.mobile-only` utility classes added\n- [ ] All 128 existing pytest tests still pass (no logic touched)\n- [ ] Manual check: Home page loads with new palette, no visual breakage\n\n**Verify:** `pytest -q` → 128 passed\n\n```json:metadata\n{\"files\": [\"routes_app.py\"], \"verifyCommand\": \"pytest -q\", \"acceptanceCriteria\": [\"palette variables updated\", \"Inter font applied\", \"card/button radii updated\", \"utility classes added\", \"tests pass\", \"manual visual check\"]}\n```"
+    },
+    {
+      "id": 1,
+      "subject": "Task 2: Bottom nav bar for mobile",
+      "status": "pending",
+      "blockedBy": [0],
+      "description": "**Goal:** Add a fixed bottom tab bar (5 destinations, icons + labels) that replaces the top pill nav below 768px, with JS to highlight the current page.\n\n**Files:**\n- Modify: `routes_app.py` (BASE_STYLE nav CSS, NAV_LINKS)\n\n**Acceptance Criteria:**\n- [ ] Desktop (>=768px): existing top pill nav unchanged\n- [ ] Mobile (<768px): top nav hidden, fixed bottom bar shown with 5 emoji icons + labels\n- [ ] Bottom bar highlights the current page via JS pathname matching\n- [ ] body gets bottom padding on mobile so content isn't hidden behind the fixed bar\n- [ ] Manual check at ~375px width: bottom bar visible and correctly highlights each of the 5 pages\n\n**Verify:** Manual browser check at 375px and 1280px widths on Home page\n\n```json:metadata\n{\"files\": [\"routes_app.py\"], \"verifyCommand\": \"manual browser check\", \"acceptanceCriteria\": [\"desktop nav unchanged\", \"mobile shows bottom bar\", \"active page highlighted\", \"body padding added\"]}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 3: CRM search backend (q parameter)",
+      "status": "pending",
+      "description": "**Goal:** Add free-text search (negocio/direccion/telefono) to the CRM leads query functions, combinable with existing filters.\n\n**Files:**\n- Modify: `routes_db.py:385-447` (`_crm_filters_clause`, `get_crm_leads`, `count_crm_leads`, `get_crm_leads_all`)\n- Test: `tests/test_routes_db.py`\n\n**Acceptance Criteria:**\n- [ ] `q` param does partial, case-insensitive match against negocio, direccion, or telefono\n- [ ] Combines with categoria/estado/min_reviews/min_rating via AND\n- [ ] Empty/no match returns empty list, not an error\n- [ ] Parameterized query (no string concatenation of user input into SQL)\n- [ ] All new tests pass, all 128 existing tests still pass\n\n**Verify:** `pytest tests/test_routes_db.py -v` → all pass including new search tests\n\n```json:metadata\n{\"files\": [\"routes_db.py\", \"tests/test_routes_db.py\"], \"verifyCommand\": \"pytest tests/test_routes_db.py -v\", \"acceptanceCriteria\": [\"matches negocio\", \"matches direccion\", \"matches telefono\", \"combines with other filters\", \"no match returns empty\", \"parameterized query\"]}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "Task 4: CRM page - search bar, collapsible filters, mobile cards",
+      "status": "pending",
+      "blockedBy": [0, 2],
+      "description": "**Goal:** Wire the new search param into the CRM route/template, collapse filters behind a toggle on mobile, and render each lead as a card instead of a table row below 768px.\n\n**Files:**\n- Modify: `routes_app.py` (`crm()`, `exportar_crm_csv()`, `PAGE_CRM`)\n\n**Acceptance Criteria:**\n- [ ] Search input at top of CRM page, value round-trips through querystring\n- [ ] `q` passed through to pager links and CSV export link\n- [ ] Filters (categoria/estado/reviews/rating) collapse behind \"Filtros\" button on mobile, always visible on desktop\n- [ ] Desktop keeps the existing table; mobile renders `.mobile-cards` list instead (both rendered from the same Jinja loop, toggled via CSS)\n- [ ] Manual check: search + filters work, mobile shows cards, desktop shows table\n\n**Verify:** Manual browser check at 375px and 1280px; `pytest -q` still 128+ passed (route logic unchanged besides q passthrough)\n\n```json:metadata\n{\"files\": [\"routes_app.py\"], \"verifyCommand\": \"pytest -q && manual browser check\", \"acceptanceCriteria\": [\"search input works\", \"q in pager/export links\", \"filters collapse on mobile\", \"table on desktop, cards on mobile\"]}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "Task 5: Mapa page - collapsible filtros + bottom sheet detail",
+      "status": "pending",
+      "blockedBy": [0],
+      "description": "**Goal:** On mobile, collapse the lotes-filter checklist behind a toggle, and turn the marker-detail panel into a bottom sheet that slides up over the full-width map instead of a fixed side panel.\n\n**Files:**\n- Modify: `routes_app.py` (`PAGE_MAPA`)\n\n**Acceptance Criteria:**\n- [ ] Desktop: map + side panel layout unchanged\n- [ ] Mobile: map is full-width, lotes filter list collapses behind a \"Filtros de lotes\" button\n- [ ] Mobile: tapping a marker slides the detail panel up from the bottom as an overlay (not pushing content)\n- [ ] Panel has a way to close (handle/close control) without navigating away\n- [ ] Manual check at 375px: tap marker, sheet slides up with correct lead info, closes correctly\n\n**Verify:** Manual browser check at 375px and 1280px on the Mapa page\n\n```json:metadata\n{\"files\": [\"routes_app.py\"], \"verifyCommand\": \"manual browser check\", \"acceptanceCriteria\": [\"desktop unchanged\", \"mobile filtros collapse\", \"bottom sheet slides up on marker tap\", \"sheet closable\"]}\n```"
+    },
+    {
+      "id": 5,
+      "subject": "Task 6: Historial + Fallidos mobile card layout",
+      "status": "pending",
+      "blockedBy": [0],
+      "description": "**Goal:** Apply the same table→cards mobile conversion used in CRM to the two remaining table-based pages.\n\n**Files:**\n- Modify: `routes_app.py` (`PAGE_HISTORIAL`, `PAGE_FALLIDOS`)\n\n**Acceptance Criteria:**\n- [ ] Both pages keep their existing desktop table unchanged\n- [ ] Both pages render a `.mobile-cards` list below 768px, from the same Jinja loop\n- [ ] Empty states (\"Todavia no generaste ningun lote.\" / \"Ninguno por ahora.\") shown correctly in both layouts\n- [ ] Manual check at 375px and 1280px on both pages\n\n**Verify:** Manual browser check at 375px and 1280px on Historial and Fallidos pages\n\n```json:metadata\n{\"files\": [\"routes_app.py\"], \"verifyCommand\": \"manual browser check\", \"acceptanceCriteria\": [\"desktop tables unchanged\", \"mobile cards render\", \"empty states correct on both pages\"]}\n```"
+    }
+  ],
+  "lastUpdated": "2026-07-21T00:00:00Z"
+}
