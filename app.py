@@ -575,7 +575,7 @@ HTML = """
         <div class="leads-header">
           <h3 id="igLeadsTitle">Cuentas nuevas</h3>
         </div>
-        <div class="leads-table-wrap">
+        <div class="leads-table-wrap desktop-only">
           <table>
             <thead>
               <tr>
@@ -589,6 +589,7 @@ HTML = """
             <tbody id="igLeadsBody"></tbody>
           </table>
         </div>
+        <div class="mobile-only" id="igLeadsCards"></div>
       </div>
     </div>
   </div>
@@ -1152,8 +1153,10 @@ function showIGResults(s) {
 
   const leads = s.leads || [];
   const tbody = document.getElementById('igLeadsBody');
+  const cards = document.getElementById('igLeadsCards');
   const title = document.getElementById('igLeadsTitle');
   tbody.innerHTML = '';
+  cards.innerHTML = '';
 
   if (leads.length > 0) {
     title.textContent = leads.length + ' cuentas nuevas agregadas';
@@ -1162,6 +1165,7 @@ function showIGResults(s) {
         ? '<a class="maps-link" href="' + l.Instagram_URL + '" target="_blank">Ver</a>'
         : '-';
       const seg = l.Seguidores ? Number(l.Seguidores).toLocaleString() : '0';
+
       const tr = document.createElement('tr');
       tr.innerHTML =
         '<td><strong>' + (l.Negocio || l.Username || '') + '</strong>' +
@@ -1172,6 +1176,20 @@ function showIGResults(s) {
         '<td style="font-size:11px;color:#666">' + (l.Tipo_contacto || 'DM') + '</td>' +
         '<td>' + igLink + '</td>';
       tbody.appendChild(tr);
+
+      const card = document.createElement('div');
+      card.className = 'item-card';
+      card.innerHTML =
+        '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">' +
+          '<strong>' + (l.Negocio || l.Username || '') + '</strong>' +
+          focoBadge(l.Foco_Apple) +
+        '</div>' +
+        (l.Username ? '<div style="color:#64748B;font-size:12px;margin-bottom:6px;">@' + l.Username + '</div>' : '') +
+        '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+          '<span style="font-size:12px;color:#64748B;">' + seg + ' seguidores &middot; ' + (l.Tipo_contacto || 'DM') + '</span>' +
+        '</div>' +
+        (igLink !== '-' ? '<div style="margin-top:8px;">' + igLink + '</div>' : '');
+      cards.appendChild(card);
     });
   }
 
