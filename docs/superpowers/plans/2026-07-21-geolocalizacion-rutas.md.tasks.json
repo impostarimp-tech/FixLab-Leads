@@ -2,17 +2,17 @@
   "planPath": "docs/superpowers/plans/2026-07-21-geolocalizacion-rutas.md",
   "tasks": [
     {
-      "id": 0,
+      "id": 18,
       "subject": "Task 1: \"Usar mi ubicacion\" origin button on Home page",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** Add a GPS-based origin option to the route-generation form, reusing the existing \"guardado\" coords format so the backend needs zero changes.\n\n**Files:**\n- Modify: `routes_app.py` (`PAGE_HOME`, origin select area and its `<script>` block)\n\n**Acceptance Criteria:**\n- [ ] Button next to the origin select calls `navigator.geolocation.getCurrentPosition()`\n- [ ] On success, a new option `guardado|<lat>|<lng>|Mi ubicacion (GPS)` is added and selected, triggering `onOrigenSelectChange()`\n- [ ] On failure/unsupported browser, shows an inline error message, doesn't break the rest of the form\n- [ ] `pytest -q` still 133 passed (no backend logic touched)\n\n**Verify:** Manual browser check with mocked geolocation.\n\n```json:metadata\n{\"files\": [\"routes_app.py\"], \"verifyCommand\": \"manual browser check with mocked geolocation\", \"acceptanceCriteria\": [\"button calls geolocation API\", \"success adds and selects new guardado-format option\", \"failure shows inline error\", \"tests still pass\"]}\n```"
     },
     {
-      "id": 1,
+      "id": 19,
       "subject": "Task 2: \"Cerca de mi\" nearest-lead lookup on Mapa page",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** Add a button that finds the nearest geocoded lead (across all categories) to the phone's GPS position, centers the map on it, and opens its detail panel with the distance shown.\n\n**Files:**\n- Modify: `routes_app.py` (`PAGE_MAPA`, cat-tabs area and its `<script>` block, `renderPanel()`)\n\n**Acceptance Criteria:**\n- [ ] New button calls `navigator.geolocation.getCurrentPosition()`\n- [ ] JS haversine function computes distance to every lead in `allLeads` (ignoring active category tab), finds the minimum\n- [ ] Map centers on the closest lead (`map.setView`), detail panel opens via `renderPanel()` with a new distance row\n- [ ] Empty `allLeads` or geolocation failure shows an inline error message, doesn't break the rest of the page\n- [ ] `pytest -q` still 133 passed (no backend logic touched)\n\n**Verify:** Manual browser check with mocked geolocation.\n\n```json:metadata\n{\"files\": [\"routes_app.py\"], \"verifyCommand\": \"manual browser check with mocked geolocation\", \"acceptanceCriteria\": [\"button calls geolocation API\", \"haversine finds correct nearest lead across all categories\", \"map centers and panel opens with distance\", \"errors handled inline\", \"tests still pass\"]}\n```"
     }
   ],
-  "lastUpdated": "2026-07-21T00:00:00Z"
+  "lastUpdated": "2026-07-21T12:35:00Z"
 }
