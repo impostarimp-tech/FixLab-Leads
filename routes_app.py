@@ -554,7 +554,7 @@ PAGE_MAPA = """
 """ + BASE_STYLE + NAV_LINKS + """
 <style>
   .map-layout { display: flex; gap: 16px; align-items: flex-start; }
-  #map { height: 600px; flex: 1; min-width: 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+  #map { height: 600px; flex: 1; min-width: 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); position: relative; z-index: 1; }
   #filtros {
     max-height: 200px; overflow-y: auto; background: var(--surface);
     border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;
