@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import csv
+import functools
 import io
 import json
 import os
+import secrets
 import shutil
 import tempfile
 
@@ -17,6 +19,25 @@ import routes_sheet_sync as sheet_sync
 SQLITE_MAGIC = b"SQLite format 3\x00"
 
 rutas_bp = Blueprint("rutas", __name__, url_prefix="/rutas")
+
+
+def _requiere_password_crm(view):
+    """Gates a view behind HTTP Basic Auth using the CRM_PASSWORD env var.
+    No-op (no password prompt) when that env var is unset -- matches the
+    existing ADMIN_RESTORE_TOKEN pattern of optional, env-gated protection."""
+    @functools.wraps(view)
+    def wrapper(*args, **kwargs):
+        password = os.environ.get("CRM_PASSWORD")
+        if not password:
+            return view(*args, **kwargs)
+        auth = request.authorization
+        if not auth or not secrets.compare_digest(auth.password or "", password):
+            return Response(
+                "Acceso restringido.", 401,
+                {"WWW-Authenticate": 'Basic realm="CRM"'},
+            )
+        return view(*args, **kwargs)
+    return wrapper
 
 # CABA barrios + GBA partidos usable as a route origin (subset of app.py's
 # ZONAS_PREDEFINIDAS, dropping comuna-level groupings and far-away interior
@@ -1124,6 +1145,7 @@ def mapa():
 
 
 @rutas_bp.route("/crm", methods=["GET"])
+@_requiere_password_crm
 def crm():
     categoria = request.args.get("categoria", "").strip()
     estado = request.args.get("estado", "").strip()
