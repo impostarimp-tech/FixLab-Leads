@@ -318,6 +318,13 @@ HTML = """
     .desktop-only { display: none; }
     .mobile-only { display: block; }
   }
+
+  .stat-grid-3 { grid-template-columns: repeat(3, 1fr); }
+
+  @media (max-width: 767px) {
+    .row { grid-template-columns: 1fr; }
+    .stat-grid, .stat-grid-3 { grid-template-columns: repeat(2, 1fr); }
+  }
 </style>
 </head>
 <body>
@@ -542,7 +549,7 @@ HTML = """
     <div class="log-box" id="igLogBox"></div>
 
     <div class="results" id="igResults">
-      <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="stat-grid stat-grid-3">
         <div class="stat highlight">
           <div class="n" id="igStatNuevos">-</div>
           <div class="l">Cuentas nuevas</div>
