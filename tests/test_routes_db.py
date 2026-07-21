@@ -524,6 +524,50 @@ def test_get_crm_leads_all_respects_filters(conn):
     assert [lead["negocio"] for lead in leads] == ["B"]
 
 
+def test_get_crm_leads_filters_by_search_query_matching_negocio(conn):
+    a = db.upsert_lead(conn, "P1", "Repuestos", "iPhone Center Palermo", "Dir A", "")
+    db.upsert_lead(conn, "P2", "Repuestos", "Otro Local", "Dir B", "")
+
+    leads = db.get_crm_leads(conn, q="iphone")
+
+    assert [lead["id"] for lead in leads] == [a]
+
+
+def test_get_crm_leads_filters_by_search_query_matching_direccion_or_telefono(conn):
+    a = db.upsert_lead(conn, "P1", "Repuestos", "Local A", "Av. Santa Fe 3421", "", telefono="1122334455")
+    b = db.upsert_lead(conn, "P2", "Repuestos", "Local B", "Otra Calle 100", "", telefono="1199998888")
+
+    by_direccion = db.get_crm_leads(conn, q="santa fe")
+    by_telefono = db.get_crm_leads(conn, q="9999")
+
+    assert [lead["id"] for lead in by_direccion] == [a]
+    assert [lead["id"] for lead in by_telefono] == [b]
+
+
+def test_get_crm_leads_search_combines_with_other_filters(conn):
+    a = db.upsert_lead(conn, "P1", "Repuestos", "iPhone Center", "Dir A", "")
+    db.upsert_lead(conn, "P2", "Fundas", "iPhone Fundas", "Dir B", "")
+
+    leads = db.get_crm_leads(conn, q="iphone", categoria="Repuestos")
+
+    assert [lead["id"] for lead in leads] == [a]
+
+
+def test_get_crm_leads_search_no_match_returns_empty(conn):
+    db.upsert_lead(conn, "P1", "Repuestos", "iPhone Center", "Dir A", "")
+
+    leads = db.get_crm_leads(conn, q="samsung")
+
+    assert leads == []
+
+
+def test_count_crm_leads_respects_search_query(conn):
+    db.upsert_lead(conn, "P1", "Repuestos", "iPhone Center", "Dir A", "")
+    db.upsert_lead(conn, "P2", "Repuestos", "Otro Local", "Dir B", "")
+
+    assert db.count_crm_leads(conn, q="iphone") == 1
+
+
 def test_migrate_adds_missing_columns_to_pre_existing_database(tmp_path):
     db_path = str(tmp_path / "legacy.db")
     conn = db.get_connection(db_path)

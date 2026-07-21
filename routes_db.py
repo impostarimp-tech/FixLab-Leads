@@ -387,6 +387,7 @@ def _crm_filters_clause(
     outreach_status: str | None,
     min_reviews: int | None = None,
     min_rating: float | None = None,
+    q: str | None = None,
 ) -> tuple[str, list]:
     clause = ""
     params: list = []
@@ -402,6 +403,10 @@ def _crm_filters_clause(
     if min_rating is not None:
         clause += " AND rating >= ?"
         params.append(min_rating)
+    if q:
+        clause += " AND (negocio LIKE ? OR direccion LIKE ? OR telefono LIKE ?)"
+        like = f"%{q}%"
+        params.extend([like, like, like])
     return clause, params
 
 
@@ -411,12 +416,13 @@ def get_crm_leads(
     outreach_status: str | None = None,
     min_reviews: int | None = None,
     min_rating: float | None = None,
+    q: str | None = None,
     page: int = 1,
     page_size: int = CRM_PAGE_SIZE,
 ) -> list[sqlite3.Row]:
     """One page of leads across the 3 categories for the consolidated CRM view,
-    optionally filtered by categoria, outreach_status, min_reviews and/or min_rating."""
-    clause, params = _crm_filters_clause(categoria, outreach_status, min_reviews, min_rating)
+    optionally filtered by categoria, outreach_status, min_reviews, min_rating and/or q."""
+    clause, params = _crm_filters_clause(categoria, outreach_status, min_reviews, min_rating, q)
     query = "SELECT * FROM leads_cache WHERE 1=1" + clause + " ORDER BY negocio LIMIT ? OFFSET ?"
     offset = (page - 1) * page_size
     return conn.execute(query, [*params, page_size, offset]).fetchall()
@@ -428,8 +434,9 @@ def count_crm_leads(
     outreach_status: str | None = None,
     min_reviews: int | None = None,
     min_rating: float | None = None,
+    q: str | None = None,
 ) -> int:
-    clause, params = _crm_filters_clause(categoria, outreach_status, min_reviews, min_rating)
+    clause, params = _crm_filters_clause(categoria, outreach_status, min_reviews, min_rating, q)
     query = "SELECT COUNT(*) AS c FROM leads_cache WHERE 1=1" + clause
     return conn.execute(query, params).fetchone()["c"]
 
@@ -440,9 +447,10 @@ def get_crm_leads_all(
     outreach_status: str | None = None,
     min_reviews: int | None = None,
     min_rating: float | None = None,
+    q: str | None = None,
 ) -> list[sqlite3.Row]:
     """Every matching lead, unpaginated — used for CSV export."""
-    clause, params = _crm_filters_clause(categoria, outreach_status, min_reviews, min_rating)
+    clause, params = _crm_filters_clause(categoria, outreach_status, min_reviews, min_rating, q)
     query = "SELECT * FROM leads_cache WHERE 1=1" + clause + " ORDER BY negocio"
     return conn.execute(query, params).fetchall()
 
