@@ -15,14 +15,12 @@ import json
 import os
 import sys
 import time
-import pickle
 
 import pandas as pd
 from apify_client import ApifyClient
 import gspread
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from google.auth.exceptions import RefreshError
+
+import routes_sheet_sync as sheet_sync
 
 # ──────────────────────────────────────────────
 #  CONFIGURACION - edita solo esta seccion
@@ -30,7 +28,6 @@ from google.auth.exceptions import RefreshError
 
 APIFY_API_TOKEN      = os.getenv("APIFY_API_TOKEN", "")
 OAUTH_CREDENTIALS_FILE = "oauth_credentials.json"
-TOKEN_FILE           = "token.pickle"
 SPREADSHEET_URL      = os.getenv("SPREADSHEET_URL", "")
 ZONA_DEFAULT = "Ciudad Autonoma de Buenos Aires, Argentina"
 MAX_PLACES_PER_SEARCH = 60
@@ -145,8 +142,11 @@ def validar_configuracion():
     if not SPREADSHEET_URL:
         errores.append("SPREADSHEET_URL no esta configurado.")
 
-    if not os.path.exists(OAUTH_CREDENTIALS_FILE):
-        errores.append(f"No se encontro '{OAUTH_CREDENTIALS_FILE}'. Descargalo de Google Cloud.")
+    if not os.getenv("GOOGLE_OAUTH_TOKEN_JSON") and not os.path.exists(OAUTH_CREDENTIALS_FILE):
+        errores.append(
+            f"No se encontro '{OAUTH_CREDENTIALS_FILE}' ni la variable de entorno "
+            "GOOGLE_OAUTH_TOKEN_JSON."
+        )
 
     if errores:
         print("\nERROR - Faltan configuraciones:")
@@ -156,7 +156,7 @@ def validar_configuracion():
 
     print("  [OK] APIFY_API_TOKEN presente")
     print("  [OK] SPREADSHEET_URL presente")
-    print("  [OK] oauth_credentials.json presente")
+    print("  [OK] Credenciales de Google Sheets configuradas")
 
 
 def validar_sheets():
@@ -327,34 +327,7 @@ def clasificar(df: pd.DataFrame) -> pd.DataFrame:
 
 def cargar_sheets():
     """Conecta a Google Sheets y devuelve worksheet + DataFrame con leads existentes."""
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive.readonly",
-    ]
-
-    creds = None
-    if os.path.exists(TOKEN_FILE):
-        with open(TOKEN_FILE, "rb") as f:
-            creds = pickle.load(f)
-
-    if not creds or not creds.valid:
-        necesita_login = True
-        if creds and creds.expired and creds.refresh_token:
-            try:
-                creds.refresh(Request())
-                necesita_login = False
-            except RefreshError:
-                print("  [AVISO] El token guardado expiro o fue revocado. Pidiendo login de nuevo...")
-                os.remove(TOKEN_FILE)
-
-        if necesita_login:
-            flow = InstalledAppFlow.from_client_secrets_file(OAUTH_CREDENTIALS_FILE, scopes)
-            creds = flow.run_local_server(port=0)
-
-        with open(TOKEN_FILE, "wb") as f:
-            pickle.dump(creds, f)
-
-    gc = gspread.authorize(creds)
+    gc = sheet_sync.get_sheets_client()
     sh = gc.open_by_url(SPREADSHEET_URL)
 
     try:
