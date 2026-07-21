@@ -62,6 +62,15 @@ def test_get_pending_geocode_returns_pendiente_and_fallido(conn):
     assert pending_ids == {pending_id, failed_id}
 
 
+def test_get_pending_geocode_sorts_pendiente_before_fallido(conn):
+    failed_id = db.upsert_lead(conn, "P1", "Repuestos", "A", "Dir A", "")
+    db.set_geocode_result(conn, failed_id, None, None, "fallido")
+    pending_id = db.upsert_lead(conn, "P2", "Repuestos", "B", "Dir B", "")
+
+    ordered_ids = [row["id"] for row in db.get_pending_geocode(conn)]
+    assert ordered_ids == [pending_id, failed_id]
+
+
 def test_find_lead_by_name_matches_case_insensitively(conn):
     lead_id = db.upsert_lead(conn, "P1", "Repuestos", "Taller Apple Fix", "Dir A", "")
     db.set_geocode_result(conn, lead_id, -34.6, -58.4, "direccion")

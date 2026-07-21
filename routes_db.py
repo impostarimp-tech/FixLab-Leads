@@ -159,8 +159,12 @@ def set_geocode_result(
 
 
 def get_pending_geocode(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Pendiente leads (never attempted) sort before fallido (previously failed) --
+    hosted deployments with a request-time limit can get cut off mid-batch, and
+    fresh leads should never be starved behind endlessly-retried failures."""
     return conn.execute(
-        "SELECT * FROM leads_cache WHERE geocode_source IN ('pendiente', 'fallido')"
+        "SELECT * FROM leads_cache WHERE geocode_source IN ('pendiente', 'fallido') "
+        "ORDER BY CASE geocode_source WHEN 'pendiente' THEN 0 ELSE 1 END"
     ).fetchall()
 
 
