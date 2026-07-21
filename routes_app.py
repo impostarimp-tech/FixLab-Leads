@@ -289,6 +289,8 @@ PAGE_HOME = """
       <option value="otro">Otra direccion (escribir)...</option>
     </select>
   </label>
+  <button type="button" class="btn-secondary" id="btnUsarUbicacion" onclick="usarMiUbicacion()">Usar mi ubicacion</button>
+  <p id="ubicacionError" style="display:none; color:#dc2626; font-size:12px; margin-top:6px;"></p>
   <div id="origenLibreWrap" style="display:none;">
     <label>Direccion o nombre del negocio (como figura en el mapa):
       <input type="text" id="origenLibre" name="origen_libre"></label>
@@ -315,6 +317,31 @@ function onOrigenSelectChange() {
   var esOtro = sel.value === 'otro';
   wrap.style.display = esOtro ? 'block' : 'none';
   libre.required = esOtro;
+}
+
+function usarMiUbicacion() {
+  var errorMsg = document.getElementById('ubicacionError');
+  errorMsg.style.display = 'none';
+  if (!navigator.geolocation) {
+    errorMsg.textContent = 'Tu navegador no soporta geolocalizacion.';
+    errorMsg.style.display = 'block';
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    var lat = pos.coords.latitude;
+    var lng = pos.coords.longitude;
+    var sel = document.getElementById('origenSelect');
+    var value = 'guardado|' + lat + '|' + lng + '|Mi ubicacion (GPS)';
+    var option = document.createElement('option');
+    option.value = value;
+    option.textContent = 'Mi ubicacion (GPS)';
+    sel.appendChild(option);
+    sel.value = value;
+    onOrigenSelectChange();
+  }, function() {
+    errorMsg.textContent = 'No se pudo obtener tu ubicacion -- revisa los permisos del navegador.';
+    errorMsg.style.display = 'block';
+  });
 }
 </script>
 
